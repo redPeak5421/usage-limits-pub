@@ -497,4 +497,42 @@ final class LoginConfirmTests: XCTestCase {
         let policy = String(fetcher[policyStart.lowerBound..<policyEnd.lowerBound])
         XCTAssertTrue(policy.contains("if LoginWebViewScripts.isAppStoreNavigation(navigationAction.request.url) {\n            decisionHandler(.cancel)\n            return\n        }"), "离屏导航（含重定向与 iframe）必须取消安装 URL")
     }
+
+    /// 顶部加载条只读 WebKit 的真实进度，状态走 Core 的可测状态机，视图拆除要停掉 KVO；
+    /// 它只反映页面加载，不得插手登录态探测。
+    func testLoginPageShowsRealPageLoadProgress() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let login = try String(contentsOf: root.appendingPathComponent("App/Auth/LoginSheetView.swift"), encoding: .utf8)
+        XCTAssertTrue(login.contains("webView.observe("), "加载条必须观察真实 WebView")
+        XCTAssertTrue(login.contains("\\.estimatedProgress"), "进度来自 WebKit，不得自造假动画")
+        XCTAssertTrue(login.contains("context.coordinator.trackProgress(of: wv)"), "观察的是可见登录页本身，不另开 WebView")
+        XCTAssertTrue(login.contains("LoginLoadProgress()"), "进度状态走 Core 的可测状态机")
+        XCTAssertTrue(login.contains("coordinator.stopTrackingProgress()"), "拆除视图要停掉 KVO")
+        XCTAssertTrue(login.contains("progressObservation?.invalidate()"), "KVO 必须显式失效")
+
+        let start = try XCTUnwrap(login.range(of: "private func applyLoadProgress("))
+        let end = try XCTUnwrap(login.range(of: "\n    }", range: start.upperBound..<login.endIndex))
+        let body = String(login[start.lowerBound..<end.upperBound])
+        XCTAssertFalse(body.contains("runCheck"), "加载进度不得触发或改写登录态探测")
+        XCTAssertFalse(body.contains("detected"), "加载进度不得改写已登录判定")
+    }
+
+    /// OAuth 弹窗不得自成一张带关闭按钮的卡片：它铺满网页区，加载反馈统一走顶部加载条。
+    func testOAuthPopupHasNoChromeAndKeepsLoadProgress() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let login = try String(contentsOf: root.appendingPathComponent("App/Auth/LoginSheetView.swift"), encoding: .utf8)
+        XCTAssertFalse(login.contains("systemName: \"xmark\""), "弹窗不再自带关闭按钮")
+        XCTAssertFalse(login.contains("heightAnchor.constraint(equalToConstant: 44)"), "弹窗不留 44pt 头，否则又是一张卡片")
+        XCTAssertTrue(login.contains("trackProgress(of: popup)"), "弹窗盖住网页区时，加载条必须跟着弹窗走")
+        XCTAssertTrue(
+            login.contains("if let active = page.activeWebView { trackProgress(of: active) }"),
+            "弹窗拆掉后加载条要还给下面那层"
+        )
+        XCTAssertTrue(login.contains("webViewDidClose"), "站点自己关弹窗的路径不能丢")
+        XCTAssertTrue(login.contains("createWebViewWith configuration:"), "弹窗仍须用 WebKit 给的 configuration 建")
+    }
 }

@@ -39,6 +39,8 @@ struct LoginSheetView: View {
     @State private var loginPage = LoginPageBox()
     @State private var checkFailure: SnapshotStatus?
     @State private var externalAppBlocked = false
+    @State private var loadProgress = LoginLoadProgress()
+    @State private var hideProgressTask: Task<Void, Never>?
 
     private var provider: ProviderID { request.provider }
 
@@ -54,10 +56,12 @@ struct LoginSheetView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 statusBar
+                loadingBar
                 LoginWebView(
                     url: provider.loginURL, accountID: request.account?.id, page: loginPage,
                     onPageFinished: { Task { await runCheck(silent: true) } },
-                    onExternalAppBlocked: { externalAppBlocked = true }
+                    onExternalAppBlocked: { externalAppBlocked = true },
+                    onProgress: { applyLoadProgress($0) }
                 )
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -137,6 +141,41 @@ struct LoginSheetView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.bar)
+    }
+
+    /// 顶部加载条：官方站首屏慢时原本只有空白页，这条按 WebKit 的真实进度给出反馈。
+    private var loadingBar: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(loadingBarTint.startColor)
+                .frame(width: geo.size.width * loadProgress.value)
+        }
+        .frame(height: 2)
+        .opacity(loadProgress.isVisible ? 1 : 0)
+        .animation(.linear(duration: 0.15), value: loadProgress.value)
+        .animation(.easeOut(duration: 0.2), value: loadProgress.isVisible)
+        .allowsHitTesting(false)
+    }
+
+    /// 加载条取本账号 / 本供应商的品牌色，与首页卡片同一套解析。
+    private var loadingBarTint: BrandTint {
+        if let account = request.account { return state.resolvedTint(for: account) }
+        return state.resolvedTint(provider: provider)
+    }
+
+    /// 满格后留 `hideDelay` 再归零；期间开了新导航就取消计时，免得登录多跳转时一路闪烁。
+    private func applyLoadProgress(_ value: Double) {
+        let justFinished = loadProgress.apply(value)
+        if loadProgress.phase == .loading {
+            hideProgressTask?.cancel()
+            hideProgressTask = nil
+        }
+        guard justFinished else { return }
+        hideProgressTask = Task { @MainActor in
+            try? await Task.sleep(for: LoginLoadProgress.hideDelay)
+            guard !Task.isCancelled else { return }
+            loadProgress.settle()
+        }
     }
 
     /// 探测一次登录态。silent 的自动轮询不去闪动工具栏按钮，手动点按才显示 spinner。
@@ -280,9 +319,13 @@ private struct LoginWebView: UIViewRepresentable {
     var page: LoginPageBox
     var onPageFinished: () -> Void
     var onExternalAppBlocked: () -> Void
+    var onProgress: (Double) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onPageFinished: onPageFinished, onExternalAppBlocked: onExternalAppBlocked, page: page, homeURL: url)
+        Coordinator(
+            onPageFinished: onPageFinished, onExternalAppBlocked: onExternalAppBlocked,
+            onProgress: onProgress, page: page, homeURL: url
+        )
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -315,12 +358,14 @@ private struct LoginWebView: UIViewRepresentable {
         wv.isInspectable = true
         #endif
         page.webView = wv
+        context.coordinator.trackProgress(of: wv)
         wv.load(URLRequest(url: url))
         return wv
     }
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         coordinator.page.webView = nil
+        coordinator.stopTrackingProgress()
         if WebViewFetcher.shared.ownsJimengLiveWebView(uiView) {
             return
         }
@@ -334,17 +379,35 @@ private struct LoginWebView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         let onPageFinished: () -> Void
         let onExternalAppBlocked: () -> Void
+        let onProgress: (Double) -> Void
         let page: LoginPageBox
         let homeURL: URL
         var popupContainers: [OAuthPopupContainer] = []
         private var webOnlyReloads: [ObjectIdentifier: URL] = [:]
+        private var progressObservation: NSKeyValueObservation?
 
         init(onPageFinished: @escaping () -> Void, onExternalAppBlocked: @escaping () -> Void,
-             page: LoginPageBox, homeURL: URL) {
+             onProgress: @escaping (Double) -> Void, page: LoginPageBox, homeURL: URL) {
             self.onPageFinished = onPageFinished
             self.onExternalAppBlocked = onExternalAppBlocked
+            self.onProgress = onProgress
             self.page = page
             self.homeURL = homeURL
+        }
+
+        /// 加载条只读 WebKit 的真实进度，不自己造动画；KVO 在主线程投递。
+        /// 观察对象始终是当前在屏的那个 WebView：弹窗盖上来就跟弹窗，弹窗拆掉再回主页面。
+        func trackProgress(of webView: WKWebView) {
+            progressObservation = webView.observe(
+                \.estimatedProgress, options: [.initial, .new]
+            ) { [weak self] view, _ in
+                self?.onProgress(view.estimatedProgress)
+            }
+        }
+
+        func stopTrackingProgress() {
+            progressObservation?.invalidate()
+            progressObservation = nil
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -495,11 +558,6 @@ private struct LoginWebView: UIViewRepresentable {
             #endif
             let container = OAuthPopupContainer(webView: popup)
             container.translatesAutoresizingMaskIntoConstraints = false
-            container.onClose = { [weak self, weak container] in
-                if let container {
-                    self?.finishPopup(container)
-                }
-            }
             if attach, let host = webView.superview {
                 host.addSubview(container)
                 NSLayoutConstraint.activate([
@@ -510,7 +568,11 @@ private struct LoginWebView: UIViewRepresentable {
                 ])
             }
             popupContainers.append(container)
-            if attach { page.popupWebView = popup }
+            if attach {
+                page.popupWebView = popup
+                // 弹窗盖住整个网页区，这段加载不接管进度条就完全没有反馈。
+                trackProgress(of: popup)
+            }
             if let request, configuration == nil {
                 popup.load(request)
             }
@@ -529,6 +591,7 @@ private struct LoginWebView: UIViewRepresentable {
             container.removeFromSuperview()
             popupContainers.removeAll { $0 === container }
             page.popupWebView = popupContainers.last(where: { $0.superview != nil })?.webView
+            if let active = page.activeWebView { trackProgress(of: active) }
             reloadJimengHomeAfterSSO()
             onPageFinished()
         }
@@ -542,41 +605,24 @@ private struct LoginWebView: UIViewRepresentable {
     }
 }
 
-/// OAuth 弹窗容器：带关闭按钮，避免 Google 页卡住时无法回到登录页。
+/// OAuth 弹窗容器：铺满网页区、不带任何 chrome，看上去就是登录页自己跳了一步。
+/// 加载反馈统一交给顶部加载条；弹窗由站点 `window.close()`、导航策略或工具栏「关闭」收场。
 private final class OAuthPopupContainer: UIView {
     let webView: WKWebView
-    var onClose: (() -> Void)?
 
     init(webView: WKWebView) {
         self.webView = webView
         super.init(frame: .zero)
         backgroundColor = .systemBackground
-        let header = UIView()
-        header.translatesAutoresizingMaskIntoConstraints = false
-        let close = UIButton(type: .system)
-        close.setImage(UIImage(systemName: "xmark"), for: .normal)
-        close.accessibilityLabel = "Close"
-        close.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
-        close.translatesAutoresizingMaskIntoConstraints = false
-        header.addSubview(close)
         webView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(header)
         addSubview(webView)
         NSLayoutConstraint.activate([
-            header.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            header.leadingAnchor.constraint(equalTo: leadingAnchor),
-            header.trailingAnchor.constraint(equalTo: trailingAnchor),
-            header.heightAnchor.constraint(equalToConstant: 44),
-            close.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
-            close.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            webView.topAnchor.constraint(equalTo: header.bottomAnchor),
+            webView.topAnchor.constraint(equalTo: topAnchor),
             webView.leadingAnchor.constraint(equalTo: leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: trailingAnchor),
             webView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
     }
-
-    @objc private func closeTapped() { onClose?() }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
