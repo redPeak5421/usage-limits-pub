@@ -19,7 +19,7 @@ settings:
     # x 大版本，上线前恒 0，仅用户批准可改
     # y 发布轮次，每次确认提交 App Store 时 +1，仅用户批准可改
     # z 已落地功能数+修复数，随改动自动累加，x/y 变动时默认不清零
-    MARKETING_VERSION: 1.4.567
+    MARKETING_VERSION: 1.4.568
     CODE_SIGN_STYLE: Automatic
 # 只是让配置文件在 Xcode 导航里可见（不参与编译）；覆盖层可再追加自己的文件
 fileGroups:

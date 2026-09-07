@@ -144,11 +144,15 @@ struct LoginSheetView: View {
     }
 
     /// 顶部加载条：官方站首屏慢时原本只有空白页，这条按 WebKit 的真实进度给出反馈。
+    /// 渐变主题色按整条轨道铺开、再由进度揭开前段（`BrandTint` 对条状元素的约定），
+    /// 压进已用长度的话低进度时首尾两色会挤成一小截。纯色的 `barFill` 就是实底，行为不变。
     private var loadingBar: some View {
         GeometryReader { geo in
             Rectangle()
-                .fill(loadingBarTint.startColor)
-                .frame(width: geo.size.width * loadProgress.value)
+                .fill(loadingBarTint.barFill)
+                .mask(alignment: .leading) {
+                    Rectangle().frame(width: geo.size.width * loadProgress.value)
+                }
         }
         .frame(height: 2)
         .opacity(loadProgress.isVisible ? 1 : 0)

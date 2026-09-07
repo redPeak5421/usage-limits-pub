@@ -519,6 +519,21 @@ final class LoginConfirmTests: XCTestCase {
         XCTAssertFalse(body.contains("detected"), "加载进度不得改写已登录判定")
     }
 
+    /// 加载条要能显示渐变主题色：渐变按整条轨道铺开、由进度揭开前段（BrandTint 的条状元素约定），
+    /// 只取 startColor 等于自定义渐变不生效，压进已用长度则低进度时首尾两色挤成一小截。
+    func testLoadingBarRendersGradientTintAcrossFullTrack() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let login = try String(contentsOf: root.appendingPathComponent("App/Auth/LoginSheetView.swift"), encoding: .utf8)
+        let start = try XCTUnwrap(login.range(of: "private var loadingBar: some View {"))
+        let end = try XCTUnwrap(login.range(of: "\n    }", range: start.upperBound..<login.endIndex))
+        let body = String(login[start.lowerBound..<end.upperBound])
+        XCTAssertTrue(body.contains("loadingBarTint.barFill"), "渐变主题色要走 barFill，与用量条同一套取色")
+        XCTAssertFalse(body.contains("loadingBarTint.startColor"), "只取起始色会让渐变的另一端永远显示不出来")
+        XCTAssertTrue(body.contains(".mask("), "渐变铺满整条轨道再由进度揭开，不按已用长度压缩")
+    }
+
     /// OAuth 弹窗不得自成一张带关闭按钮的卡片：它铺满网页区，加载反馈统一走顶部加载条。
     func testOAuthPopupHasNoChromeAndKeepsLoadProgress() throws {
         let root = URL(fileURLWithPath: #filePath)
