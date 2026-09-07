@@ -61,6 +61,19 @@ public enum ShareLayout {
             + (section.updateTime != nil ? 16 : 0)
     }
 
+    /// 每张服务商卡片顶边在画布中的 y（pt），顺序与 `model.sections` 一致。
+    /// 分享预览按它把「正在看的那张卡」钉在原处（见 `SharePreviewScroll`）。
+    public static func sectionTops(of model: ShareCardModel) -> [CGFloat] {
+        var y = model.topSafeReserve + margin + padding
+        var tops: [CGFloat] = []
+        tops.reserveCapacity(model.sections.count)
+        for section in model.sections {
+            tops.append(y)
+            y += cardHeight(section) + sectionGap
+        }
+        return tops
+    }
+
     /// 画布总高。导出图的像素高 = 它 × `ShareCanvasRenderer.scale`。
     public static func canvasHeight(of model: ShareCardModel) -> CGFloat {
         let body = model.sections.reduce(0) { $0 + cardHeight($1) }

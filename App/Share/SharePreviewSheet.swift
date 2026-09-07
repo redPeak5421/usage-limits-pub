@@ -22,6 +22,11 @@ struct SharePreviewSheet: View {
     @State private var selectedIDs: Set<String>
     /// 预览可用宽度，画布按它对 390pt 等比缩放。
     @State private var previewWidth: CGFloat = ShareLayout.canvasWidth
+    /// 程序化滚动的把手：切开关后把锚点卡片推回原来的屏幕位置。
+    @State private var scrollPosition = ScrollPosition(edge: .top)
+    /// 滚动几何只在切开关那一刻取用，装在引用盒里：
+    /// 若写成 `@State` 数值，滚动每一帧都会让二十几张卡的画布重新求值，滑动直接卡。
+    @State private var viewport = ViewportBox()
 
     init(request: ShareRequest) {
         self.request = request
@@ -38,7 +43,17 @@ struct SharePreviewSheet: View {
             ScrollView {
                 sharePreviewCanvas
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, Self.canvasVerticalPadding)
+            }
+            .scrollPosition($scrollPosition)
+            .onScrollGeometryChange(for: PreviewViewport.self) {
+                PreviewViewport(
+                    top: $0.contentOffset.y + $0.contentInsets.top,
+                    height: $0.containerSize.height - $0.contentInsets.top - $0.contentInsets.bottom
+                )
+            } action: { _, geometry in
+                viewport.top = geometry.top
+                viewport.height = geometry.height
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // 底部操作区悬浮在滚动内容之上：长图从液态玻璃面板下方滚过
@@ -219,6 +234,12 @@ struct SharePreviewSheet: View {
     /// 与首页卡片展开同款：弹性推进，元素各自滑到新位置而不是整块跳变。
     private static let morph = Animation.snappy(duration: 0.32, extraBounce: 0.06)
 
+    /// 画布上下留白；换算滚动偏移时要把它减掉。
+    private static let canvasVerticalPadding: CGFloat = 12
+
+    /// 预览画布相对 390pt 原尺寸的缩放比。
+    private var canvasScale: CGFloat { min(previewWidth / ShareLayout.canvasWidth, 1) }
+
     /// 画布按可用宽度等比缩放；`ShareCardView` 内部恒按 390pt 布局。
     /// 高度得先知道原始高度才能缩放，所以用与渲染器同一套几何算出来，不靠测量回读。
     private var sharePreviewCanvas: some View {
@@ -232,11 +253,10 @@ struct SharePreviewSheet: View {
             }
             .frame(height: 0)
 
-            let scale = min(previewWidth / ShareLayout.canvasWidth, 1)
             ShareCardView(model: model, assets: assets, lang: lang)
-                .scaleEffect(scale, anchor: .top)
+                .scaleEffect(canvasScale, anchor: .top)
                 .frame(width: previewWidth,
-                       height: ShareLayout.canvasHeight(of: model) * scale,
+                       height: ShareLayout.canvasHeight(of: model) * canvasScale,
                        alignment: .top)
         }
     }
@@ -247,8 +267,15 @@ struct SharePreviewSheet: View {
     }
 
     /// 只重算结构化内容。位图留到真正要分享 / 保存那一刻再合成。
+    ///
+    /// 画布高度会随开关整体变化。若始终以画布顶边为原点，实例一多，
+    /// 正在看的那张卡就会被上方卡片的伸缩推出屏幕；所以先记下视口中心那张卡，
+    /// 重排完再把它推回同一屏幕位置，上下两侧各自伸缩。
     private func remodel() {
         let use = pickedInputs
+        let anchor = SharePreviewScroll.anchor(
+            in: model, offset: canvasOffset, viewportHeight: canvasViewportHeight
+        )
         model = ShareImageComposer.model(
             snapshots: use.map(\.snapshot),
             expanded: request.expanded,
@@ -263,6 +290,43 @@ struct SharePreviewSheet: View {
             resetTimeStyle: SharedStore.shared.resetTimeStyle
         )
         assets = ShareCardAssets.make(customLogoData: use.map(\.customLogoData))
+        restoreScroll(to: anchor)
+    }
+
+    /// 视口顶边在画布坐标里的位置（pt，未经预览缩放）。停在最顶上时为负，
+    /// 差的正是画布外那圈内边距，`slack` 会把它算回可滚范围。
+    private var canvasOffset: CGFloat {
+        (viewport.top - Self.canvasVerticalPadding) / canvasScale
+    }
+
+    /// 可见高度换算到画布坐标。
+    private var canvasViewportHeight: CGFloat { viewport.height / canvasScale }
+
+    /// 画布外那圈内边距换算到画布坐标。
+    private var canvasSlack: CGFloat { Self.canvasVerticalPadding / canvasScale }
+
+    /// 把锚点卡片推回原来的屏幕位置。滚动与内容高度在同一次动画里推进，两边同步。
+    private func restoreScroll(to anchor: SharePreviewAnchor?) {
+        guard let anchor, viewport.height > 0 else { return }
+        let target = SharePreviewScroll.restoredOffset(
+            for: anchor, in: model, viewportHeight: canvasViewportHeight, slack: canvasSlack
+        )
+        scrollPosition.scrollTo(y: target * canvasScale + Self.canvasVerticalPadding)
+    }
+
+    /// `onScrollGeometryChange` 的观察值：只关心视口顶边与可见高度。
+    private struct PreviewViewport: Equatable {
+        var top: CGFloat
+        var height: CGFloat
+    }
+
+    /// 存放上一次滚动几何。故意是引用类型：改它不触发重绘。
+    @MainActor
+    private final class ViewportBox {
+        /// 视口顶边距内容顶边的距离（屏幕 pt）。
+        var top: CGFloat = 0
+        /// 视口可见高度（屏幕 pt），已扣掉导航栏与底部面板占的边距。
+        var height: CGFloat = 0
     }
 
     private var pickedInputs: [ShareCardInput] {
