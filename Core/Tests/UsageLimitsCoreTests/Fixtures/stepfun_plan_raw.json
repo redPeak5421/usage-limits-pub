@@ -1,0 +1,10 @@
+{
+  "status": 1,
+  "subscription": {
+    "name": "Plus",
+    "plan_type": 1,
+    "status": 1,
+    "account_email": "person-placeholder@example.invalid"
+  },
+  "token": "token-placeholder-raw"
+}

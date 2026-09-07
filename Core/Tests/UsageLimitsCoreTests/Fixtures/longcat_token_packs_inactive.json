@@ -1,0 +1,10 @@
+{
+  "code": 0,
+  "data": {
+    "currentLot": {
+      "totalToken": 50000000,
+      "consumedToken": 50000000,
+      "status": "EXPIRED"
+    }
+  }
+}

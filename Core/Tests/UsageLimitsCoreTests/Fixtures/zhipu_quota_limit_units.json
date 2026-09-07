@@ -1,0 +1,53 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "limits": [
+      {
+        "type": "TIME_LIMIT",
+        "unit": 5,
+        "number": 1,
+        "usage": 1000,
+        "currentValue": 15,
+        "remaining": 985,
+        "percentage": 2,
+        "nextResetTime": 1787553682998,
+        "usageDetails": [
+          { "modelCode": "search-prime", "usage": 12 },
+          { "modelCode": "web-reader", "usage": 3 },
+          { "modelCode": "zread", "usage": 0 }
+        ]
+      },
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 6,
+        "number": 1,
+        "usage": 200,
+        "currentValue": 120,
+        "remaining": 50,
+        "percentage": 60,
+        "nextResetTime": 1787400000000
+      },
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 3,
+        "number": 5,
+        "percentage": 1,
+        "nextResetTime": 1786909052482
+      },
+      {
+        "type": "CREDIT_LIMIT",
+        "unit": 1,
+        "number": 1,
+        "usage": 500,
+        "currentValue": 100,
+        "remaining": 400,
+        "percentage": 20,
+        "nextResetTime": 1786950000000
+      }
+    ],
+    "planName": "GLM Coding Max",
+    "level": "max"
+  },
+  "success": true
+}

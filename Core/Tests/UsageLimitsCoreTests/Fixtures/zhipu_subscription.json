@@ -1,0 +1,37 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "id": "sub-demo",
+      "customerId": "10001",
+      "agreementNo": "ag-demo",
+      "orderNo": "ord-demo",
+      "productId": "product-733034",
+      "productName": "GLM Coding Pro",
+      "description": "1. 享受 Lite 套餐所有权益\n2. Lite 套餐的 5 倍用量\n3. 生成速度比 Lite 快 40%-60%\n4. 内置图像视频理解、联网搜索 MCP",
+      "status": "VALID",
+      "purchaseTime": "2026-01-24 14:42:50",
+      "valid": "2027-01-24 10:00:00-2028-01-24 10:00:00",
+      "autoRenew": 0,
+      "initialPrice": 1200.0,
+      "standardPrice": 2400.0,
+      "useInitialPrice": true,
+      "actualPrice": 960.0,
+      "renewPrice": 2400.0,
+      "currentPeriod": 2,
+      "currentRenewTime": "2026-01-24",
+      "nextRenewTime": "2027-01-24",
+      "paymentType": "WAIT_PAY",
+      "billingCycle": "annually",
+      "inCurrentPeriod": true,
+      "paymentChannel": "ALI",
+      "refundable": false,
+      "refundableReason": "REFUND_ACTIVITY_ENDED",
+      "banStatus": 0,
+      "banExpireTime": null,
+      "version": "V1"
+    }
+  ],
+  "success": true
+}

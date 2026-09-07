@@ -1,0 +1,11 @@
+{
+  "ret": "0",
+  "errmsg": "success",
+  "data": {
+    "credit": {
+      "vip_credit": 0,
+      "purchase_credit": 149,
+      "gift_credit": 30
+    }
+  }
+}

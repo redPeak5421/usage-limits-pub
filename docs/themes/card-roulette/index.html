@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>信用卡轮盘</title>
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link
+      href="https://fonts.bunny.net/css?family=big-shoulders-display:500,600,700|cormorant-garamond:500,600,600i|ibm-plex-mono:400,500"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="desk">
+      <div class="phone-slot" id="phoneSlot">
+        <div class="phone" id="phone">
+          <div class="phone-grain" aria-hidden="true"></div>
+          <header class="chrome">
+            <p class="vault-mark">ATELIER VAULT</p>
+          </header>
+
+          <div class="wheel-scene" id="wheelScene">
+            <div class="vault-glow" aria-hidden="true"></div>
+            <div class="needle" aria-hidden="true"></div>
+            <div class="wheel" id="wheel" role="listbox" aria-label="信用卡轮盘"></div>
+          </div>
+
+          <footer class="plate">
+            <p class="plate-kicker">已选定</p>
+            <h1 class="plate-title" id="cardTitle"></h1>
+            <p class="plate-meta" id="cardMeta"></p>
+          </footer>
+
+          <p class="hint" id="hint">上下拨动选卡</p>
+          <div class="sr-only" id="liveRegion" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <script src="./main.js"></script>
+  </body>
+</html>

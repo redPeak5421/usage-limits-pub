@@ -1,0 +1,4 @@
+{"json":{"0":[[0],[null,0,0]]}}
+not-json
+{"json":[0,0,[[{"result":0}], ["result",0,1]]]}
+{"json":[2,0,[[{"subTier":"free","subscription":{"productName":"pro","currentPeriodEnd":1780763009000},"usageBand":"max","billingNextResetAt":1779999999999,"usageFourHourPercentage":12.5,"usageMonthPercentage":34.25,"usageFourHourNextResetAt":1779366216920,"usagePeriodPercentage":44,"usageWindowNextResetAt":1779000000000}]]]}

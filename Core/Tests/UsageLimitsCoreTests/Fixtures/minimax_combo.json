@@ -1,0 +1,27 @@
+{
+  "cycle_resource_packages": [
+    {
+      "title": "Plus",
+      "price_data": { "price_tag": "490" },
+      "button_text": "立即订阅",
+      "combo_id": "311002",
+      "cycle_type": 3
+    },
+    {
+      "title": "TokenPlanMax-年度会员",
+      "price_data": { "price_tag": "1190" },
+      "button_text": "续订套餐",
+      "combo_id": "311003",
+      "cycle_type": 3,
+      "price_desc": "每年，按年订阅"
+    },
+    {
+      "title": "Ultra",
+      "price_data": { "price_tag": "4690" },
+      "button_text": "升级套餐",
+      "combo_id": "311009",
+      "cycle_type": 3
+    }
+  ],
+  "base_resp": { "status_code": 0, "status_msg": "success" }
+}

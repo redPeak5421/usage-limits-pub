@@ -1,0 +1,5 @@
+{
+  "user": { "name": "Demo User", "email": "demo@example.com", "id": "user-demo" },
+  "accessToken": "fake-token-for-tests",
+  "expires": "2026-09-16T00:00:00.000Z"
+}

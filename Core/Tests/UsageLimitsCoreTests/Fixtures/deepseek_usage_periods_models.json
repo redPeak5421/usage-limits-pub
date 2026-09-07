@@ -1,0 +1,83 @@
+{
+  "last_7d": {
+    "start": 1786291200,
+    "end": 1786896000,
+    "cost": {
+      "code": 0,
+      "msg": "",
+      "data": {
+        "biz_code": 0,
+        "biz_msg": "",
+        "biz_data": {
+          "start": 1786291200,
+          "end": 1786896000,
+          "bucket": 86400,
+          "models": ["deepseek-v4-flash", "deepseek-reasoner"],
+          "data": [
+            {
+              "currency": "CNY",
+              "series": [
+                {
+                  "api_key": { "tracking_id": "key-a", "name": "Key A", "sensitive_id": "sk-***", "valid": true },
+                  "model": "deepseek-v4-flash",
+                  "buckets": [{ "time": 1786377600, "cost": "1.00" }]
+                },
+                {
+                  "api_key": { "tracking_id": "key-b", "name": "Key B", "sensitive_id": "sk-***", "valid": true },
+                  "model": "deepseek-reasoner",
+                  "buckets": [{ "time": 1786377600, "cost": "4.00" }]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "amount": {
+      "code": 0,
+      "msg": "",
+      "data": {
+        "biz_code": 0,
+        "biz_msg": "",
+        "biz_data": {
+          "start": 1786291200,
+          "end": 1786896000,
+          "bucket": 86400,
+          "models": ["deepseek-v4-flash", "deepseek-reasoner"],
+          "series": [
+            {
+              "api_key": { "tracking_id": "key-a", "name": "Key A", "sensitive_id": "sk-***", "valid": true },
+              "model": "deepseek-v4-flash",
+              "buckets": [
+                {
+                  "time": 1786377600,
+                  "usage": {
+                    "REQUEST": 10,
+                    "RESPONSE_TOKEN": 1000,
+                    "PROMPT_CACHE_HIT_TOKEN": 8000,
+                    "PROMPT_CACHE_MISS_TOKEN": 2000
+                  }
+                }
+              ]
+            },
+            {
+              "api_key": { "tracking_id": "key-b", "name": "Key B", "sensitive_id": "sk-***", "valid": true },
+              "model": "deepseek-reasoner",
+              "buckets": [
+                {
+                  "time": 1786377600,
+                  "usage": {
+                    "REQUEST": 5,
+                    "RESPONSE_TOKEN": 500,
+                    "PROMPT_CACHE_HIT_TOKEN": 1500,
+                    "PROMPT_CACHE_MISS_TOKEN": 500
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

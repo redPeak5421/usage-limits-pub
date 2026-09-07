@@ -1,0 +1,135 @@
+name: UsageLimits
+# 开发者团队 ID 等本机私有设置放 project.local.yml（已 gitignore）：从 project.local.example.yml 复制一份再 xcodegen generate
+include:
+  - project.local.yml
+  - project.edition.yml
+options:
+  postGenCommand: swift scripts/configure_workspace.swift
+  bundleIdPrefix: com.canonforge
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    # 构建号跟随营销版本（用户 2026-08-26 指示）：TestFlight / App Store 显示 0.2.159 (0.2.159)
+    CURRENT_PROJECT_VERSION: $(MARKETING_VERSION)
+    # 版本规则 x.y.z（详见 .cursor/rules/version-numbering.mdc）
+    # x 大版本，上线前恒 0，仅用户批准可改
+    # y 发布轮次，每次确认提交 App Store 时 +1，仅用户批准可改
+    # z 已落地功能数+修复数，随改动自动累加，x/y 变动时默认不清零
+    MARKETING_VERSION: 1.4.562
+    CODE_SIGN_STYLE: Automatic
+# 只是让配置文件在 Xcode 导航里可见（不参与编译）；覆盖层可再追加自己的文件
+fileGroups:
+  - project.yml
+  - project.edition.yml
+  - project.local.example.yml
+packages:
+  UsageLimitsCore:
+    path: Core
+targets:
+  UsageLimits:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - SharedUI
+    dependencies:
+      - package: UsageLimitsCore
+      - target: UsageLimitsWidget
+      - target: UsageLimitsWatch
+    entitlements:
+      path: App/UsageLimits.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.canonforge.usagelimits
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Usage Limits
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # 只支持竖屏的 App 必须声明全屏，否则 Xcode 提示需支持全部方向
+        UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.canonforge.usagelimits.refresh
+        CFBundleURLTypes:
+          - CFBundleURLName: com.canonforge.usagelimits
+            CFBundleURLSchemes:
+              - aiusage
+              - usagelimits
+        LSApplicationQueriesSchemes:
+          - weixin
+        NSPhotoLibraryAddUsageDescription: 保存用量分享图到相册
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.canonforge.usagelimits
+        PRODUCT_NAME: UsageLimits
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+  UsageLimitsWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widget
+      - SharedUI
+    dependencies:
+      - package: UsageLimitsCore
+    entitlements:
+      path: Widget/UsageLimitsWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.canonforge.usagelimits
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Usage Limits Widget
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.canonforge.usagelimits.widget
+        TARGETED_DEVICE_FAMILY: "1"
+  UsageLimitsWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - Watch
+      - SharedUI/Branding.swift
+      - SharedUI/Assets.xcassets
+    dependencies:
+      - package: UsageLimitsCore
+    info:
+      path: Watch/Info.plist
+      properties:
+        CFBundleDisplayName: Usage Limits
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.canonforge.usagelimits
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.canonforge.usagelimits.watchkitapp
+        TARGETED_DEVICE_FAMILY: "4"
+schemes:
+  UsageLimits:
+    archive:
+      config: Release
+    build:
+      targets:
+        UsageLimits: all
+    run:
+      config: Debug
+      environmentVariables:
+        IDEPreferLogStreaming: YES

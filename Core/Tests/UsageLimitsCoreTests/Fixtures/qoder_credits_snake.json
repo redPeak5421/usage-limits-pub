@@ -1,0 +1,13 @@
+{
+  "quota_key": "big_model_credits",
+  "next_reset_at": 1788220800000,
+  "total_quota": {
+    "quota_summary": {
+      "used_value": 1,
+      "limit_value": 200,
+      "remaining_value": 199,
+      "usage_percentage": 0.5,
+      "unit": "credit"
+    }
+  }
+}

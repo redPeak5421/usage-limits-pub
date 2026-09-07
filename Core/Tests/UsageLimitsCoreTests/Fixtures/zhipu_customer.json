@@ -1,0 +1,60 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "id": 10001,
+    "customerNumber": "10001",
+    "customerName": "demo",
+    "nickName": "demo",
+    "email": "[REDACTED]",
+    "phoneNumber": "138****0000",
+    "avatar": "https://example.com/a.png",
+    "userType": "PERSONAL",
+    "openId": "openid-demo",
+    "unionId": "union-demo",
+    "wechatNickName": null,
+    "phoneOpenId": null,
+    "channel": "wechat_open",
+    "balance": null,
+    "availableBalance": null,
+    "rechargeAmount": null,
+    "giveAmount": null,
+    "acType": "PERSONAL_AC",
+    "acState": "AC_SUCCESS",
+    "acSubmitType": "ON_EXAMINE_PERSONAL_AC",
+    "whetherChanges": true,
+    "createTime": "2026-01-24 03:04:02",
+    "lastRequestTime": null,
+    "source": "默认",
+    "countryCode": "86",
+    "remittanceAccount": null,
+    "allLabelValue": null,
+    "enableStatus": "ENABLE",
+    "securityEncryptFlag": "N",
+    "isNewUser": false,
+    "isUniversity": false,
+    "enableTwoFa": false,
+    "organizations": [
+      {
+        "organizationName": "org",
+        "organizationId": "org-demo",
+        "role": "owner",
+        "isDefault": true,
+        "projects": [
+          {
+            "projectName": "p",
+            "projectId": "proj-demo",
+            "organizationId": "org-demo",
+            "role": "owner",
+            "status": "active",
+            "isDefault": true,
+            "projectType": 1
+          }
+        ]
+      }
+    ],
+    "watermarkCode": 1,
+    "betaTester": false
+  },
+  "success": true
+}

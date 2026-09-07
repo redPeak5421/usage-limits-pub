@@ -1,0 +1,46 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "totalUsage": {
+      "totalModelCallCount": 114,
+      "totalTokensUsage": 6871706,
+      "modelSummaryList": [
+        {
+          "modelName": "GLM-5.3",
+          "totalTokens": 249599,
+          "sortOrder": 1
+        },
+        {
+          "modelName": "GLM-5.2",
+          "totalTokens": 6622107,
+          "sortOrder": 2
+        }
+      ]
+    },
+    "modelSummaryList": [
+      {
+        "modelName": "GLM-5.3",
+        "totalTokens": 249599,
+        "sortOrder": 1
+      },
+      {
+        "modelName": "GLM-5.2",
+        "totalTokens": 6622107,
+        "sortOrder": 2
+      }
+    ],
+    "granularity": "hourly",
+    "x_time": [
+      "2026-08-10 00:00",
+      "2026-08-10 01:00",
+      "2026-08-10 02:00"
+    ],
+    "tokensUsage": [
+      0,
+      0,
+      0
+    ]
+  },
+  "success": true
+}

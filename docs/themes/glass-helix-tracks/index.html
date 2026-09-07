@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>玻璃螺旋曲目</title>
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link
+      href="https://fonts.bunny.net/css?family=ibm-plex-mono:400,500|outfit:500,600,700"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="desk">
+      <div class="desk-glow" aria-hidden="true"></div>
+      <div class="phone-slot" id="phoneSlot">
+        <div class="phone-btns" aria-hidden="true">
+          <span class="phone-btn silent"></span>
+          <span class="phone-btn vol-up"></span>
+          <span class="phone-btn vol-down"></span>
+          <span class="phone-btn power"></span>
+        </div>
+        <div class="phone" id="phone">
+          <div class="phone-bezel" aria-hidden="true"></div>
+          <div class="phone-screen" id="phoneScreen">
+            <div class="status-bar" aria-hidden="true">
+              <p class="clock" id="clock">21:41</p>
+              <div class="island"></div>
+              <div class="status-glyphs">
+                <span class="bars"></span>
+                <span class="wifi"></span>
+                <span class="battery"></span>
+              </div>
+            </div>
+
+            <div class="grain" aria-hidden="true"></div>
+
+            <header class="chrome">
+              <p class="mark">NIGHT REEL</p>
+              <p class="formation" id="statusLabel">拧度 0° · 螺距 紧凑</p>
+            </header>
+
+            <div class="scene" id="scene">
+              <div class="well" id="well" aria-hidden="true"></div>
+              <div class="deck" id="deck" role="listbox" aria-label="曲目带"></div>
+            </div>
+
+            <footer class="plate">
+              <p class="now-kicker">正向经过</p>
+              <h1 class="now-title" id="nowTitle"></h1>
+              <p class="now-meta" id="nowMeta"></p>
+              <p class="hint" id="hint">上下滑过 · 左右拧螺旋 · 斜向调螺距</p>
+            </footer>
+
+            <div class="home-indicator" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sr-only" id="liveRegion" aria-live="polite"></div>
+    <script src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "images" : [
+    { "filename" : "logo.png", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1, "brand-source" : "inline:github-copilot.svg" },
+  "properties" : { "template-rendering-intent" : "template" }
+}

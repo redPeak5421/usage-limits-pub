@@ -1,0 +1,14 @@
+{
+  "subscription_tier": "SuperGrok",
+  "config": {
+    "creditUsagePercent": 42,
+    "currentPeriod": {
+      "type": "USAGE_PERIOD_TYPE_MONTHLY",
+      "start": "2026-08-01T00:00:00Z",
+      "end": "2026-09-01T00:00:00Z"
+    },
+    "productUsage": [
+      { "product": "PRODUCT_CHAT", "usagePercent": 30 }
+    ]
+  }
+}

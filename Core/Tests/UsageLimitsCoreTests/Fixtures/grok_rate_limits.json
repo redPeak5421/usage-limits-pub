@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "modelName": "grok-4",
+      "requestKind": "DEFAULT",
+      "status": 200,
+      "body": { "windowSizeSeconds": 7200, "remainingQueries": 18, "totalQueries": 20 }
+    },
+    {
+      "modelName": "grok-4",
+      "requestKind": "REASONING",
+      "status": 200,
+      "body": { "windowSizeSeconds": 7200, "remainingQueries": 7, "totalQueries": 10 }
+    }
+  ]
+}

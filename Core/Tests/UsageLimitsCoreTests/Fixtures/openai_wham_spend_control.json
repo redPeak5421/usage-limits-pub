@@ -1,0 +1,15 @@
+{
+  "plan_type": "business",
+  "account_id": "acct-demo",
+  "rate_limit": {
+    "primary_window": { "used_percent": 42, "limit_window_seconds": 18000, "reset_after_seconds": 5400 },
+    "individual_limit": {
+      "limit": "500",
+      "used": "125",
+      "remaining_percent": 75,
+      "resets_at": 1790000000
+    }
+  },
+  "spend_control": { "enabled": true },
+  "credits": { "balance": 0, "has_credits": false, "unlimited": false }
+}

@@ -1,0 +1,31 @@
+{
+  "status": 1,
+  "five_hour_usage_left_rate": 0,
+  "five_hour_usage_reset_time": "0",
+  "weekly_usage_left_rate": 0,
+  "weekly_usage_reset_time": "0",
+  "plan_family": 2,
+  "plan_credit_rate_limit": {
+    "subscription_credit_left_rate": "0.8",
+    "subscription_credit_reset_time": "1786288293",
+    "topup_credit_left_rate": 0.5,
+    "credit_buckets": [
+      {
+        "type": 1,
+        "credit_total": "100",
+        "credit_residual": "80",
+        "expire_at": "1792416128",
+        "next_reset_at": "1786288293",
+        "owner": "person-placeholder@example.invalid"
+      },
+      {
+        "type": 2,
+        "credit_total": "300",
+        "credit_residual": "150",
+        "expire_at": "1792416128",
+        "next_reset_at": "1786288293"
+      }
+    ]
+  },
+  "oasis_token": "token-placeholder-raw"
+}

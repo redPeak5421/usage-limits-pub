@@ -1,0 +1,35 @@
+{
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": {
+    "notion_user": {
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": {
+        "value": {
+          "value": {
+            "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "email": "person-placeholder@example.invalid",
+            "name": "Person Placeholder"
+          }
+        }
+      }
+    },
+    "space": {
+      "11111111-2222-3333-4444-555555555555": {
+        "value": {
+          "value": {
+            "id": "11111111-2222-3333-4444-555555555555",
+            "name": "Workspace Free Placeholder",
+            "subscription_tier": "free"
+          }
+        }
+      },
+      "99999999-8888-7777-6666-555555555555": {
+        "value": {
+          "value": {
+            "id": "99999999-8888-7777-6666-555555555555",
+            "name": "Workspace Business Placeholder",
+            "subscription_tier": "business"
+          }
+        }
+      }
+    }
+  }
+}

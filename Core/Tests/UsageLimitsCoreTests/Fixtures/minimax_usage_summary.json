@@ -1,0 +1,78 @@
+{
+  "total_days": 150,
+  "total_token_consumed": "4.52B",
+  "usage_ranking_percent": 2.101421894380601,
+  "most_active_day": {
+    "date": "2026-06-12",
+    "token_count": "295.33M",
+    "image_count": "0",
+    "video_count": "0",
+    "music_count": "0",
+    "voice_character_count": "0"
+  },
+  "active_days": 146,
+  "current_consecutive_days": 0,
+  "daily_token_usage": [
+    10073928,
+    11741507,
+    233403,
+    0,
+    0,
+    0,
+    0,
+    178,
+    30917,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "date_model_usage": [
+    {
+      "date": "2026-03-14",
+      "models": [
+        {
+          "model": "MiniMax-M2.5",
+          "input_token": 3215496,
+          "cache_read_token": 1057151,
+          "cache_create_token": 223590,
+          "output_token": 9919,
+          "total_token": 4506156,
+          "cache_hit_percent": "32.88%"
+        }
+      ],
+      "total_input_token": 3215496,
+      "total_cache_read_token": 1057151,
+      "total_cache_create_token": 223590,
+      "total_output_token": 9919,
+      "total_token": 3225415,
+      "cache_hit_percent": "32.88%"
+    },
+    {
+      "date": "2026-03-15",
+      "models": [
+        {
+          "model": "MiniMax-M2.5",
+          "input_token": 14660925,
+          "cache_read_token": 4454715,
+          "cache_create_token": 838485,
+          "output_token": 34235,
+          "total_token": 19988360,
+          "cache_hit_percent": "30.38%"
+        }
+      ],
+      "total_input_token": 14660925,
+      "total_cache_read_token": 4454715,
+      "total_cache_create_token": 838485,
+      "total_output_token": 34235,
+      "total_token": 14695160,
+      "cache_hit_percent": "30.38%"
+    }
+  ],
+  "last_update_time": "08-16 23:00",
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "success"
+  }
+}

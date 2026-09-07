@@ -1,0 +1,24 @@
+{
+  "ratelimitCode5h": {
+    "enabled": true,
+    "resetTime": "2026-08-16T16:36:54.660389632Z"
+  },
+  "ratelimitCode7d": {
+    "ratio": 0.0075,
+    "enabled": true,
+    "resetTime": "2026-08-22T13:36:54.660389632Z"
+  },
+  "subscriptionBalance": {
+    "id": "bal-demo",
+    "feature": "FEATURE_OMNI",
+    "type": "SUBSCRIPTION",
+    "unit": "UNIT_CREDIT",
+    "upcomingExpiration": {
+      "timestamp": "2026-08-21T13:36:55.168888Z"
+    },
+    "amountUsedRatio": 0.0579,
+    "kimiCodeUsedRatio": 0.0579,
+    "expireTime": "2026-08-21T13:36:55.168888Z",
+    "domain": "DOMAIN_NEXUS"
+  }
+}

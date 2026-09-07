@@ -1,0 +1,16 @@
+{
+  "user": {
+    "id": "user-demo",
+    "nickname": "demo",
+    "avatar": "https://example.com/a.png",
+    "phone": {
+      "countryCode": "86",
+      "number": "138****0000"
+    },
+    "region": "REGION_CN",
+    "globalId": "user-demo"
+  },
+  "workspace": {
+    "user": {}
+  }
+}

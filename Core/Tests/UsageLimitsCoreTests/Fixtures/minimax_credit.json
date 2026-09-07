@@ -1,0 +1,65 @@
+{
+  "total_credits": 35000,
+  "used_credits": 0,
+  "remaining_credits": 35000,
+  "credit_packages_details": [
+    {
+      "package_id": "pkg-demo",
+      "group_id": "grp-demo",
+      "total_count": "2000",
+      "usage_count": "0",
+      "remains_count": "2000",
+      "effective_time": 1786425496651,
+      "expiration_time": 1794374296651,
+      "create_time": 1786425496651,
+      "models": [
+        "MiniMax-M2.5-highspeed",
+        "music-3.0-cover",
+        "speech-hd",
+        "MiniMax-Hailuo-2.3-Fast"
+      ],
+      "status": 1,
+      "package_name": "Token Plan Credit",
+      "combo_id": 330001,
+      "cycle_type": 0,
+      "combo_type": 8
+    },
+    {
+      "package_id": "pkg-demo",
+      "group_id": "grp-demo",
+      "total_count": "33000",
+      "usage_count": "0",
+      "remains_count": "33000",
+      "effective_time": 1780273744061,
+      "expiration_time": 1811809744061,
+      "create_time": 1780273744062,
+      "models": [
+        "MiniMax-Hailuo-2.3-Fast-6s-768p",
+        "music-2.5",
+        "image-01-live",
+        "MiniMax-Hailuo-2.3"
+      ],
+      "status": 1,
+      "package_name": "token_plan_credit",
+      "combo_id": 330001,
+      "cycle_type": 0,
+      "combo_type": 8
+    }
+  ],
+  "balance_breakdown": {
+    "total_balance": 35000,
+    "buckets": [
+      {
+        "source": 3,
+        "balance": 35000,
+        "expire_time_ms": 1794374296651,
+        "order_id_prefix": "GIFT"
+      }
+    ]
+  },
+  "token_plan_credit_fallback_enabled": true,
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "success"
+  }
+}

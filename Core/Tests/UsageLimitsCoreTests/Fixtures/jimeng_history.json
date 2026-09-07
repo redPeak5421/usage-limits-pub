@@ -1,0 +1,58 @@
+{
+  "ret": "0",
+  "errmsg": "success",
+  "data": {
+    "new_cursor": "1000:1",
+    "has_more": true,
+    "total_credit": 179,
+    "records": [
+      {
+        "amount": 30,
+        "create_time": 1787494919,
+        "title": "每日免费积分",
+        "history_type": 1,
+        "submit_id": "00000000-0000-0000-0000-000000000001",
+        "extra_content": "",
+        "trade_source": "FREEMIUM_RECEIVE",
+        "status": "Checked",
+        "is_triplets": false,
+        "history_id": "1001"
+      },
+      {
+        "amount": 80,
+        "create_time": 1786550399,
+        "title": "积分到期清零",
+        "history_type": 2,
+        "submit_id": "00000000-0000-0000-0000-000000000002",
+        "extra_content": "",
+        "trade_source": "FREEMIUM_RECEIVE",
+        "status": "Checked",
+        "is_triplets": false,
+        "history_id": "1002"
+      },
+      {
+        "amount": 160,
+        "create_time": 1786379768,
+        "title": "Seedance2.5",
+        "history_type": 2,
+        "submit_id": "00000000-0000-0000-0000-000000000003",
+        "extra_content": "",
+        "status": "Checked",
+        "is_triplets": true,
+        "history_id": "1003"
+      },
+      {
+        "amount": 496,
+        "create_time": 1786303073,
+        "title": "失败返还",
+        "history_type": 1,
+        "submit_id": "00000000-0000-0000-0000-000000000004",
+        "extra_content": "",
+        "trade_source": "REFUND",
+        "status": "Checked",
+        "is_triplets": true,
+        "history_id": "1004"
+      }
+    ]
+  }
+}

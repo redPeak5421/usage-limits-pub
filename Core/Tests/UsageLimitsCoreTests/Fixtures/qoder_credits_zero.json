@@ -1,0 +1,10 @@
+{
+  "totalQuota": {
+    "quotaSummary": {
+      "usedValue": 0,
+      "limitValue": 0,
+      "remainingValue": 0,
+      "unit": "credit"
+    }
+  }
+}

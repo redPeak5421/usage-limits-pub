@@ -1,0 +1,22 @@
+{
+  "memberships": [
+    {
+      "seat_tier": "team_standard",
+      "organization": {
+        "uuid": "org-team-demo",
+        "name": "Team Workspace",
+        "rate_limit_tier": "default_claude_team",
+        "billing_type": "stripe"
+      }
+    },
+    {
+      "seat_tier": null,
+      "organization": {
+        "uuid": "org-0000-demo",
+        "name": "Personal",
+        "rate_limit_tier": "default_claude_max_20x",
+        "billing_type": "stripe"
+      }
+    }
+  ]
+}

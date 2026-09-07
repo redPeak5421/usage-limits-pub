@@ -1,0 +1,8 @@
+{
+  "results": [
+    {"modelName":"auto","requestKind":"DEFAULT","status":403,"body":"{\"code\":7,\"message\":\"A second factor must be presented in order to proceed. [WKE=unauthorized:second-factor-needed]\",\"details\":[]}"},
+    {"modelName":"fast","requestKind":"DEFAULT","status":403,"body":"{\"code\":7,\"message\":\"A second factor must be presented in order to proceed. [WKE=unauthorized:second-factor-needed]\",\"details\":[]}"},
+    {"modelName":"expert","requestKind":"DEFAULT","status":403,"body":"{\"code\":7,\"message\":\"A second factor must be presented in order to proceed. [WKE=unauthorized:second-factor-needed]\",\"details\":[]}"},
+    {"modelName":"heavy","requestKind":"DEFAULT","status":403,"body":"{\"code\":7,\"message\":\"A second factor must be presented in order to proceed. [WKE=unauthorized:second-factor-needed]\",\"details\":[]}"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "code": 0,
+  "message": "",
+  "data": {
+    "planCode": "token_plan_standard",
+    "currentPeriodEnd": "2026-09-30 23:59:59",
+    "expired": false
+  }
+}

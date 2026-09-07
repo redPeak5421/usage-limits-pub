@@ -1,0 +1,101 @@
+{
+  "subscription": {
+    "subscriptionId": "sub-demo",
+    "goods": {
+      "id": "goods-demo",
+      "title": "Allegretto",
+      "durationDays": 30,
+      "useRegion": "REGION_CN",
+      "createTime": "2025-09-03T09:26:48.609Z",
+      "updateTime": "2025-09-03T09:26:48.609Z",
+      "membershipLevel": "LEVEL_INTERMEDIATE",
+      "amounts": [
+        {
+          "currency": "CNY",
+          "priceInCents": "190800"
+        }
+      ],
+      "billingCycle": {
+        "duration": 1,
+        "timeUnit": "TIME_UNIT_YEAR"
+      },
+      "type": "GOODS_TYPE_SUBSCRIPTION",
+      "domain": "DOMAIN_NEXUS"
+    },
+    "subscriptionTime": "2026-03-21T13:36:55.167137Z",
+    "currentStartTime": "2026-03-21T13:36:55.168888Z",
+    "currentEndTime": "2027-03-22T00:00:00Z",
+    "nextBillingTime": "2027-03-21T13:36:55.168888Z",
+    "status": "SUBSCRIPTION_STATUS_CANCEL",
+    "paymentChannel": "PAYMENT_CHANNEL_ALIPAY",
+    "type": "TYPE_PURCHASE",
+    "active": true
+  },
+  "balances": [
+    {
+      "id": "bal-demo",
+      "feature": "FEATURE_OMNI",
+      "type": "SUBSCRIPTION",
+      "unit": "UNIT_CREDIT",
+      "upcomingExpiration": {
+        "timestamp": "2026-08-21T13:36:55.168888Z"
+      },
+      "amountUsedRatio": 0.0579,
+      "expireTime": "2026-08-21T13:36:55.168888Z",
+      "domain": "DOMAIN_NEXUS"
+    }
+  ],
+  "subscribed": true,
+  "purchaseSubscription": {
+    "subscriptionId": "sub-demo",
+    "goods": {
+      "id": "goods-demo",
+      "title": "Allegretto",
+      "durationDays": 30,
+      "useRegion": "REGION_CN",
+      "createTime": "2025-09-03T09:26:48.609Z",
+      "updateTime": "2025-09-03T09:26:48.609Z",
+      "membershipLevel": "LEVEL_INTERMEDIATE",
+      "amounts": [
+        {
+          "currency": "CNY",
+          "priceInCents": "190800"
+        }
+      ],
+      "billingCycle": {
+        "duration": 1,
+        "timeUnit": "TIME_UNIT_YEAR"
+      },
+      "type": "GOODS_TYPE_SUBSCRIPTION",
+      "domain": "DOMAIN_NEXUS"
+    },
+    "subscriptionTime": "2026-03-21T13:36:55.167137Z",
+    "currentStartTime": "2026-03-21T13:36:55.168888Z",
+    "currentEndTime": "2027-03-22T00:00:00Z",
+    "nextBillingTime": "2027-03-21T13:36:55.168888Z",
+    "status": "SUBSCRIPTION_STATUS_CANCEL",
+    "paymentChannel": "PAYMENT_CHANNEL_ALIPAY",
+    "type": "TYPE_PURCHASE",
+    "active": true
+  },
+  "capabilities": [
+    {
+      "feature": "FEATURE_DEEP_RESEARCH",
+      "constraint": {
+        "parallelism": 2
+      }
+    },
+    {
+      "feature": "FEATURE_CLAW",
+      "constraint": {
+        "parallelism": 2
+      }
+    },
+    {
+      "feature": "FEATURE_WORK",
+      "constraint": {
+        "cronNum": 15
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "images" : [
+    { "filename" : "logo.png", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1, "brand-source" : "https://abacus.ai/static/h23c4bfa0/icon2/favicon-192.png" },
+  "properties" : { "template-rendering-intent" : "original" }
+}

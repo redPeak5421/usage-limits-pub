@@ -1,0 +1,7 @@
+{
+  "images" : [
+    { "filename" : "logo.png", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1, "brand-source" : "https://antigravity.google/apple-touch-icon-precomposed.png" },
+  "properties" : { "template-rendering-intent" : "original" }
+}

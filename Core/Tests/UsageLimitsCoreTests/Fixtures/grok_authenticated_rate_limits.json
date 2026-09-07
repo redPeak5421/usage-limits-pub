@@ -1,0 +1,8 @@
+{
+  "results": [
+    {"modelName":"auto","requestKind":"DEFAULT","status":200,"body":{"remainingQueries":150,"totalQueries":150,"windowSizeSeconds":7200}},
+    {"modelName":"fast","requestKind":"DEFAULT","status":200,"body":{"remainingQueries":400,"totalQueries":400,"windowSizeSeconds":7200}},
+    {"modelName":"expert","requestKind":"DEFAULT","status":200,"body":{"remainingQueries":140,"totalQueries":140,"windowSizeSeconds":7200}},
+    {"modelName":"heavy","requestKind":"DEFAULT","status":200,"body":{"remainingQueries":20,"totalQueries":20,"windowSizeSeconds":7200}}
+  ]
+}

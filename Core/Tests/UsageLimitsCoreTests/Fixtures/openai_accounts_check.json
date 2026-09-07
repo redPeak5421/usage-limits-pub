@@ -1,0 +1,12 @@
+{
+  "accounts": {
+    "default": {
+      "account": { "plan_type": "plus", "account_id": "acct-demo" },
+      "entitlement": {
+        "subscription_plan": "chatgptplusplan",
+        "has_active_subscription": true,
+        "expires_at": "2026-09-01T00:00:00Z"
+      }
+    }
+  }
+}

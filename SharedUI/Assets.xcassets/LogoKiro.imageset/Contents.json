@@ -1,0 +1,7 @@
+{
+  "images" : [
+    { "filename" : "logo.png", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1, "brand-source" : "https://kiro.dev/icon.svg?fe599162bb293ea0" },
+  "properties" : { "template-rendering-intent" : "original" }
+}

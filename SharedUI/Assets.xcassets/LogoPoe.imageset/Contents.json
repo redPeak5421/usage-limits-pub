@@ -1,0 +1,7 @@
+{
+  "images" : [
+    { "filename" : "logo.png", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1, "brand-source" : "https://poe.com/favicon.ico" },
+  "properties" : { "template-rendering-intent" : "original" }
+}

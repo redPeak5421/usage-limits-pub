@@ -1,0 +1,20 @@
+{
+  "totalQuota": {
+    "quotaSummary": {
+      "usedValue": 0,
+      "limitValue": 0,
+      "remainingValue": 0,
+      "usagePercentage": 0,
+      "unit": "credit"
+    }
+  },
+  "sharedQuota": {
+    "quotaSummary": {
+      "usedValue": 0,
+      "limitValue": 0,
+      "remainingValue": 0,
+      "usagePercentage": 25,
+      "unit": "credit"
+    }
+  }
+}

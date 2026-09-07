@@ -1,0 +1,19 @@
+{
+  "user-placeholder": {
+    "notion_user": {
+      "user-placeholder": {
+        "value": {
+          "id": "user-placeholder"
+        }
+      }
+    },
+    "space": {
+      "workspace-enterprise": {
+        "value": {
+          "id": "workspace-enterprise",
+          "subscription_tier": "enterprise"
+        }
+      }
+    }
+  }
+}

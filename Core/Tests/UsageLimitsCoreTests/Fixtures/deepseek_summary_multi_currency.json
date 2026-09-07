@@ -1,0 +1,21 @@
+{
+  "code": 0,
+  "msg": "",
+  "data": {
+    "biz_code": 0,
+    "biz_msg": "",
+    "biz_data": {
+      "normal_wallets": [
+        { "currency": "CNY", "balance": "30.00", "token_estimation": "0" },
+        { "currency": "USD", "balance": "12.50", "token_estimation": "0" }
+      ],
+      "bonus_wallets": [
+        { "currency": "USD", "balance": "2.50", "token_estimation": "0" }
+      ],
+      "total_costs": [
+        { "currency": "CNY", "amount": "100.00" },
+        { "currency": "USD", "amount": "8.00" }
+      ]
+    }
+  }
+}

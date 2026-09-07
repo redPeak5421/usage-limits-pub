@@ -1,0 +1,42 @@
+{
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": {
+    "notion_user": {
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": {
+        "value": {
+          "value": {
+            "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "email": "first-placeholder@example.invalid",
+            "name": "First Placeholder"
+          }
+        }
+      }
+    },
+    "space": {
+      "11111111-2222-3333-4444-555555555555": {
+        "value": {
+          "id": "11111111-2222-3333-4444-555555555555",
+          "subscription_tier": "business"
+        }
+      }
+    }
+  },
+  "bbbbbbbb-cccc-dddd-eeee-ffffffffffff": {
+    "notion_user": {
+      "bbbbbbbb-cccc-dddd-eeee-ffffffffffff": {
+        "value": {
+          "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+          "email": "second-placeholder@example.invalid",
+          "name": "Second Placeholder"
+        }
+      }
+    },
+    "space": {
+      "99999999-8888-7777-6666-555555555555": {
+        "value": {
+          "id": "99999999-8888-7777-6666-555555555555",
+          "subscription_tier": "enterprise"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "nextResetAt": 50000000000,
+  "totalQuota": {
+    "quotaSummary": {
+      "usedValue": 20,
+      "limitValue": 100,
+      "remainingValue": 80,
+      "usagePercentage": 20,
+      "unit": "credit"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+# 复制为 project.local.yml（已 gitignore），填自己的 Apple 开发者团队 ID，再执行 xcodegen generate。
+# 自动签名需要它；只跑模拟器可以留空。
+settings:
+  base:
+    DEVELOPMENT_TEAM: ""

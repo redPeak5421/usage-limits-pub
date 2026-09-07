@@ -1,0 +1,6 @@
+{
+  "rate_limits": {
+    "primary": { "used_percent": 42, "window_minutes": 300, "resets_in_seconds": 5400 },
+    "secondary": { "used_percent": 18, "window_minutes": 10080, "resets_in_seconds": 432000 }
+  }
+}

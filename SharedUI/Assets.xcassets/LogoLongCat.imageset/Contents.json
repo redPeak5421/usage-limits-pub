@@ -1,0 +1,7 @@
+{
+  "images" : [
+    { "filename" : "logo.png", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1, "brand-source" : "https://s3plus.meituan.net/aigc-media-resources/longcat/yeqian-logo.svg" },
+  "properties" : { "template-rendering-intent" : "original" }
+}

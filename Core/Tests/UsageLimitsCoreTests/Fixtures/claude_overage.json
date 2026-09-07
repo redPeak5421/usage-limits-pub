@@ -1,0 +1,6 @@
+{
+  "is_enabled": true,
+  "monthly_credit_limit": 5000,
+  "used_credits": 1250,
+  "currency": "USD"
+}

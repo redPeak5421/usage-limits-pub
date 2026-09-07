@@ -1,0 +1,7 @@
+{
+  "success": true,
+  "result": {
+    "nextBillingDate": "2026-09-28T08:30:00.123Z",
+    "currentTier": "pro"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "five_hour": { "utilization": 0.0, "resets_at": "2026-08-16T09:49:59.867726+00:00" },
+  "seven_day": { "utilization": 22.0, "resets_at": "2026-08-19T08:59:59.867755+00:00" },
+  "seven_day_routines": { "utilization": 12.0, "resets_at": "2026-08-19T08:59:59.867755+00:00" },
+  "seven_day_cowork": { "utilization": 3.0, "resets_at": "2026-08-19T08:59:59.867755+00:00" },
+  "nimbus_quill": { "utilization": 0.0, "resets_at": null },
+  "amber_ladder": { "utilization": 0.0, "resets_at": "2026-08-19T08:59:59.867755+00:00" },
+  "extra_usage": {
+    "is_enabled": true,
+    "monthly_limit": 4000,
+    "used_credits": 1000.0,
+    "utilization": null,
+    "currency": "USD",
+    "decimal_places": 2
+  },
+  "limits": [
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 61,
+      "resets_at": "2026-08-19T08:59:59.868018+00:00",
+      "scope": { "model": { "id": "claude-all-models", "display_name": "All models" } },
+      "is_active": false
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 44,
+      "resets_at": "2026-08-19T08:59:59.868018+00:00",
+      "scope": { "model": { "id": "claude-opus-4-6", "display_name": "Claude Opus 4.6" } },
+      "is_active": true
+    }
+  ]
+}

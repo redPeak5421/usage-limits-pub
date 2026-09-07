@@ -1,0 +1,43 @@
+{
+  "code": 0,
+  "msg": "",
+  "data": {
+    "biz_code": 0,
+    "biz_msg": "",
+    "biz_data": {
+      "id": "user-demo",
+      "token": "[REDACTED]",
+      "email": "[REDACTED]",
+      "mobile_number": "138****0000",
+      "area_code": "+86",
+      "status": 0,
+      "id_profile": {
+        "provider": "WECHAT",
+        "id": "profile-demo",
+        "picture": "https://example.com/avatar.png",
+        "name": "demo",
+        "locale": "zh_CN",
+        "email": null
+      },
+      "feature_gates": {
+        "PAYMENT": true,
+        "ANTOM_ENABLED": true,
+        "APPLE_PAY_ENABLED": true,
+        "GOOGLE_PAY_ENABLED": true
+      },
+      "currency": "CNY",
+      "identity_verification_id": "idv-demo",
+      "business_verification_id": null,
+      "balance_alert": {
+        "CNY": {
+          "enabled": true,
+          "alert_bound": "10"
+        },
+        "USD": {
+          "enabled": false,
+          "alert_bound": "1"
+        }
+      }
+    }
+  }
+}

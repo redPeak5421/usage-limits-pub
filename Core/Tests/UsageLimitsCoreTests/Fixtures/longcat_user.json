@@ -1,0 +1,11 @@
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "userId": 1,
+    "name": "<redacted>",
+    "nickName": "<redacted>",
+    "phone": "<redacted>",
+    "token": "<redacted>"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "code": 0,
+  "message": "",
+  "data": {
+    "balance": "50.00",
+    "currency": "USD",
+    "cashBalance": "30.00",
+    "giftBalance": "20.00"
+  }
+}

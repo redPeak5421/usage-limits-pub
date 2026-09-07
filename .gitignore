@@ -1,0 +1,29 @@
+.DS_Store
+DerivedData/
+Core/.build/
+Core/build/
+*.xcuserdata/
+xcuserdata/
+.omc/
+build/
+reference/
+logs/
+my-interface-docs/
+HANDOFF.md
+*.log
+docs/explain/
+docs/logo/
+docs/superpowers/
+# 开发者团队 ID 等本机私有工程设置
+project.local.yml
+# App Store Connect API 私钥只放本机
+*.p8
+AuthKey_*
+__pycache__/
+# XcodeGen 生成物（含本机团队 ID），clone 后先 xcodegen generate
+UsageLimits.xcodeproj/
+# 兼容旧工作区遗留的生成工程，避免误提交本机签名配置
+AIUsage.xcodeproj/
+# git worktree 与两个特殊目录（base-usage-limits 分支、pub-usage-limits 独立仓库）都放这里，不入库（规范见 CLAUDE.md）
+worktrees/
+docs/films/

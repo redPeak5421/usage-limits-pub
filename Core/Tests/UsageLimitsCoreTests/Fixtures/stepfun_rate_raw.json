@@ -1,0 +1,10 @@
+{
+  "status": 1,
+  "desc": "person-placeholder@example.invalid token-placeholder-raw",
+  "account_id": "account-placeholder",
+  "five_hour_usage_left_rate": 1,
+  "five_hour_usage_reset_time": "1777528800",
+  "weekly_usage_left_rate": 0.99781543,
+  "weekly_usage_reset_time": "1777899600",
+  "unknown_identity": "Person Placeholder"
+}

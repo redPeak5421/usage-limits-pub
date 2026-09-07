@@ -1,0 +1,10 @@
+{
+  "subscription_tier": "SuperGrok Heavy",
+  "config": {
+    "currentPeriod": {
+      "type": "USAGE_PERIOD_TYPE_WEEKLY",
+      "start": "2026-08-14T07:52:00Z",
+      "end": "2026-08-21T07:52:00Z"
+    }
+  }
+}

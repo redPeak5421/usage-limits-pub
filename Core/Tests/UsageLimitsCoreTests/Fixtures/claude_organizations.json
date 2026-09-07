@@ -1,0 +1,8 @@
+[
+  {
+    "uuid": "org-0000-demo",
+    "name": "Personal",
+    "capabilities": ["chat", "claude_max"],
+    "rate_limit_tier": "default_claude_max_5x"
+  }
+]
