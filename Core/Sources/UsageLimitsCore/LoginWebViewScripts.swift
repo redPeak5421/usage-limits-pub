@@ -150,6 +150,8 @@ public enum LoginWebViewScripts {
     /// `about:blank` 先放行（Google 常先开空白再跳转），后续导航再审。
     public static func shouldPresentLoginPopup(url: URL?, loginPage: URL?) -> Bool {
         guard let url else { return true }
+        // 安装链接经常没有 host，必须在空 host / OAuth 路径放行之前拒绝。
+        if isAppStoreNavigation(url) { return false }
         let scheme = url.scheme?.lowercased() ?? ""
         if scheme == "about" || url.absoluteString == "about:blank" { return true }
         guard let host = url.host, !host.isEmpty else { return true }

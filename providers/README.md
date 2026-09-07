@@ -15,6 +15,8 @@
 
 **WebKit 导航线程**：离屏探针的 `decidePolicyFor` 继承 `WebViewFetcher` 的 `@MainActor` 隔离，读取 `WKNavigationAction.request` / `targetFrame` 并调用策略回调均在主线程。广告拦截、Apple SSO iframe 取消及其它初始化 iframe 放行规则不变；不要用 `nonisolated` 绕开 WebKit 的隔离契约。
 
+**安装链接拦截**（2026-09-07，所有原生供应商共用）：登录主页面、OAuth 弹窗导航、弹窗创建和离屏探针均拒绝 `itms-services` 等 `LoginWebViewScripts.isAppStoreNavigation` 识别的安装 / 商店协议（大小写不敏感）。检查先于空 host / 同站 / OAuth 路径放行，覆盖 iframe 与重定向，禁止转交系统安装。正常 HTTPS 登录、`about:blank`、WebKit configuration / opener 与同源 fetch 契约保持不变。各供应商端点、鉴权和响应形状本轮未改。
+
 **展示约定**：某模型/产品未使用（用量为 0 或额度未动）时，首页默认不显示该条（`UsageMetric.hasUsage`）。
 
 **数值约定**（所有供应商一致）：JSON 布尔不是 0/1 用量；`NaN` / `Infinity` / 溢出指数字符串与任何非有限数直接丢弃。所有 Double→Int 先做 finite / 范围检查，日期只接受 1970–9999。快照落盘前递归验证百分比、金额、余额/总额、breakdown / history 和日期；无效快照拒绝落盘并记诊断，不覆盖上一份有效快照。

@@ -672,8 +672,8 @@ try! appIconJSON.write(
     to: appIconDir.appendingPathComponent("Contents.json"), atomically: true, encoding: .utf8
 )
 
-// 手表不支持外观变体，表盘环境本就偏黑：恒用深色版。
-writePNG(darkIcon, to: root.appendingPathComponent("Watch/Assets.xcassets/AppIcon.appiconset/AppIcon.png"))
+// Watch 图标独立维护：彩虹发光外缘让圆形轮廓在黑色桌面可见。
+// 不用手机深色图标覆盖 Watch/Assets.xcassets/AppIcon.appiconset/AppIcon.png。
 // 分享长图的品牌位画在白卡上：用深色版最醒目。
 writePNG(darkIcon, to: root.appendingPathComponent("SharedUI/Assets.xcassets/ShareAppIcon.imageset/AppIcon.png"))
 // LogoWeChat / LogoMoments 用官方原图（SharedUI/Assets），不要用几何草稿覆盖。

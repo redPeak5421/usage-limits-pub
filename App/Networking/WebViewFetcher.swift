@@ -575,6 +575,11 @@ extension WebViewFetcher: WKNavigationDelegate {
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        // 官网的重定向或 iframe 同样可能发起安装链接，离屏页不能交给系统处理。
+        if LoginWebViewScripts.isAppStoreNavigation(navigationAction.request.url) {
+            decisionHandler(.cancel)
+            return
+        }
         if LoginWebViewScripts.isAdHost(navigationAction.request.url?.host) {
             decisionHandler(.cancel)
             return

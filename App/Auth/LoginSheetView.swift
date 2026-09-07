@@ -436,6 +436,9 @@ private struct LoginWebView: UIViewRepresentable {
             windowFeatures: WKWindowFeatures
         ) -> WKWebView? {
             let url = navigationAction.request.url
+            if LoginWebViewScripts.isAppStoreNavigation(url) {
+                return nil
+            }
             if GrokWebLoginPolicy.blocksExternalNavigation(url, loginPage: homeURL) {
                 onExternalAppBlocked()
                 return nil

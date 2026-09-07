@@ -463,4 +463,38 @@ final class LoginConfirmTests: XCTestCase {
         XCTAssertTrue(src.contains("LoginWebViewScripts.hideSmartAppBanner"))
         XCTAssertTrue(src.contains("isAppStoreNavigation"))
     }
+
+    func testInstallLinksCannotBecomeLoginPopups() {
+        let home = URL(string: "https://claude.ai/login")!
+        for value in [
+            "itms-services://?action=download-manifest&url=https://example.com/app.plist",
+            "ITMS-SERVICES://?action=download-manifest&url=https://example.com/app.plist",
+            "itms-services://claude.ai/login",
+            "itms-apps://itunes.apple.com/app/id123",
+        ] {
+            let url = URL(string: value)!
+            XCTAssertTrue(LoginWebViewScripts.isAppStoreNavigation(url), value)
+            XCTAssertFalse(LoginWebViewScripts.shouldPresentLoginPopup(url: url, loginPage: home), value)
+        }
+        for value in ["about:blank", "https://accounts.google.com/o/oauth2/v2/auth", "https://appleid.apple.com/auth/authorize"] {
+            XCTAssertTrue(LoginWebViewScripts.shouldPresentLoginPopup(url: URL(string: value), loginPage: home), value)
+        }
+    }
+
+    func testEveryWebViewEntryRejectsInstallLinksBeforeContinuing() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let login = try String(contentsOf: root.appendingPathComponent("App/Auth/LoginSheetView.swift"), encoding: .utf8)
+        let popupStart = try XCTUnwrap(login.range(of: "createWebViewWith configuration:"))
+        let popupEnd = try XCTUnwrap(login.range(of: "@discardableResult", range: popupStart.upperBound..<login.endIndex))
+        let popup = String(login[popupStart.lowerBound..<popupEnd.lowerBound])
+        XCTAssertTrue(popup.contains("if LoginWebViewScripts.isAppStoreNavigation(url) {\n                return nil\n            }"), "安装 URL 不得创建任何弹窗，包括未附着的 WKWebView")
+
+        let fetcher = try String(contentsOf: root.appendingPathComponent("App/Networking/WebViewFetcher.swift"), encoding: .utf8)
+        let policyStart = try XCTUnwrap(fetcher.range(of: "decidePolicyFor navigationAction:"))
+        let policyEnd = try XCTUnwrap(fetcher.range(of: "private func resumeWaiters", range: policyStart.upperBound..<fetcher.endIndex))
+        let policy = String(fetcher[policyStart.lowerBound..<policyEnd.lowerBound])
+        XCTAssertTrue(policy.contains("if LoginWebViewScripts.isAppStoreNavigation(navigationAction.request.url) {\n            decisionHandler(.cancel)\n            return\n        }"), "离屏导航（含重定向与 iframe）必须取消安装 URL")
+    }
 }
