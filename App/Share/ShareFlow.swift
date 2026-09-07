@@ -12,11 +12,39 @@ struct ShareRequest: Identifiable {
     let selectedIDs: Set<String>
     let expanded: Bool
     let isGlobal: Bool
-    let result: ShareResult
+    /// 打开预览时的初始内容；位图留到分享 / 保存那一刻才渲。
+    let model: ShareCardModel
 }
 
 /// 保存到相册 + 直接唤起微信 + 系统分享（「分享」）。
 enum ShareFlow {
+    /// 分享画布的结构化内容。预览只要它，切选项不生成任何位图。
+    static func model(
+        snapshots: [ProviderSnapshot],
+        titles: [String] = [],
+        tints: [BrandTint?] = [],
+        expanded: Bool,
+        language: AppLanguage,
+        options: ShareComposeOptions = SharedStore.shared.shareComposeOptions,
+        displayMode: UsageDisplayMode = SharedStore.shared.usageDisplayMode,
+        resetTimeStyle: ResetTimeStyle = SharedStore.shared.resetTimeStyle
+    ) -> ShareCardModel {
+        ShareImageComposer.model(
+            snapshots: snapshots,
+            expanded: expanded,
+            language: language,
+            hasIcon: !options.hideBrandRow,
+            hasQR: !options.hideBrandRow,
+            options: options,
+            logoProviders: Set(ProviderID.allCases),
+            titles: titles,
+            tints: tints,
+            displayMode: displayMode,
+            resetTimeStyle: resetTimeStyle
+        )
+    }
+
+    /// 真正要分享 / 保存时才合成一次 PNG，渲染的正是预览那棵视图树。
     @MainActor
     static func compose(
         snapshots: [ProviderSnapshot],
@@ -25,45 +53,20 @@ enum ShareFlow {
         expanded: Bool,
         language: AppLanguage,
         options: ShareComposeOptions = SharedStore.shared.shareComposeOptions,
-        customLogos: [CGImage?] = [],
+        customLogos: [Data?] = [],
         displayMode: UsageDisplayMode = SharedStore.shared.usageDisplayMode,
         resetTimeStyle: ResetTimeStyle = SharedStore.shared.resetTimeStyle
-    ) -> ShareResult {
-        // ShareAppIcon 是 AppIcon.appiconset 的可加载副本（主屏图标不能用 UIImage(named:) 读）。
-        let icon = UIImage(named: "ShareAppIcon")?.cgImage
-            ?? UIImage(named: "AppIcon")?.cgImage
-        var logos: [ProviderID: CGImage] = [:]
-        for provider in ProviderID.allCases {
-            if let cg = UIImage(named: provider.logoAssetName)?.cgImage {
-                logos[provider] = cg
-            }
-        }
-        return ShareImageComposer.compose(
-            snapshots: snapshots,
-            titles: titles,
-            tints: tints,
-            expanded: expanded,
-            language: language,
-            icon: icon,
-            options: options,
-            logos: logos,
-            customMark: customShareMark(),
-            customMarks: customLogos,
-            displayMode: displayMode,
-            resetTimeStyle: resetTimeStyle
+    ) -> ShareResult? {
+        let card = model(
+            snapshots: snapshots, titles: titles, tints: tints, expanded: expanded,
+            language: language, options: options,
+            displayMode: displayMode, resetTimeStyle: resetTimeStyle
         )
-    }
-
-    /// 自定义账号缺内置商标时用 SF Symbol，禁止回落 Claude/DeepSeek 标。
-    private static func customShareMark() -> CGImage? {
-        let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
-        guard let image = UIImage(systemName: "link.circle.fill", withConfiguration: config) else {
-            return nil
-        }
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 36, height: 36))
-        return renderer.image { _ in
-            image.draw(in: CGRect(x: 0, y: 0, width: 36, height: 36))
-        }.cgImage
+        return ShareCanvasRenderer.render(
+            model: card,
+            assets: ShareCardAssets.make(customLogoData: customLogos),
+            lang: language
+        )
     }
 
     static var isWeChatInstalled: Bool {

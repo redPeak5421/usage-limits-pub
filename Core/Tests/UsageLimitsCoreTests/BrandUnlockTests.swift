@@ -128,7 +128,7 @@ final class BrandUnlockTests: XCTestCase {
         XCTAssertFalse(hidden.model.includesQR)
         XCTAssertFalse(hidden.model.brandAtBottom)
         XCTAssertFalse(hidden.model.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
-        XCTAssertLessThan(hidden.image.height, shown.image.height)
+        XCTAssertLessThan(hidden.canvasHeight, shown.canvasHeight)
         XCTAssertEqual(L10n.tr("settings.share.hideBrand", .zh), "隐藏分享二维码")
         for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
             XCTAssertNotEqual(L10n.tr("settings.share.hideBrand", lang), "settings.share.hideBrand")

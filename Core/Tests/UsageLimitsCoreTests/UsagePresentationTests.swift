@@ -86,7 +86,7 @@ final class UsagePresentationTests: XCTestCase {
             contentsOf: root.appendingPathComponent("SharedUI/Branding.swift"), encoding: .utf8
         )
         let share = try String(
-            contentsOf: root.appendingPathComponent("Core/Sources/UsageLimitsCore/ShareImage.swift"), encoding: .utf8
+            contentsOf: root.appendingPathComponent("App/Share/ShareCardView.swift"), encoding: .utf8
         )
         let card = try String(
             contentsOf: root.appendingPathComponent("App/Views/ProviderCardView.swift"), encoding: .utf8

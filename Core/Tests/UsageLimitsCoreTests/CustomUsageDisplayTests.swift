@@ -198,6 +198,7 @@ final class CustomUsageDisplayTests: XCTestCase {
             "SharedUI/WidgetViews.swift",
             "Watch/WatchViews.swift",
             "Core/Sources/UsageLimitsCore/ShareImage.swift",
+            "App/Share/ShareCardView.swift",
         ].map { try String(contentsOf: root.appendingPathComponent($0), encoding: .utf8) }
 
         XCTAssertTrue(sources[0].contains("CustomUsageDisplay.presentation"))
@@ -238,7 +239,7 @@ final class CustomUsageDisplayTests: XCTestCase {
         XCTAssertTrue(sources[3].contains("L10n.tr(metric.label, language)"), "分享自定义行名须再查 L10n")
         XCTAssertTrue(sources[2].contains("visibleMetrics"), "表端失败须忽略 leftover 数字")
         XCTAssertTrue(sources[2].contains("custom.noNumeric"), "表端自定义空态不得用官方无额度口侄")
-        XCTAssertTrue(sources[3].contains("if let used = meter.usedPercent"), "分享 usedPercent==nil 不得画空条")
+        XCTAssertTrue(sources[4].contains("if let used = meter.usedPercent"), "分享 usedPercent==nil 不得画空条")
         XCTAssertTrue(sources.allSatisfy { !$0.contains("gauge.percent") }, "Gauge API 须明确区分展示百分比和风险百分比")
 
         let shareFlow = try String(

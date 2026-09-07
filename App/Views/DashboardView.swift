@@ -598,26 +598,20 @@ struct DashboardView: View {
     private func beginShare(selected: [ShareCardInput], isGlobal: Bool) {
         guard !selected.isEmpty else { return }
         let catalog = displayedShareItems(from: sceneItems)
-        let composed = ShareFlow.compose(
+        let card = ShareFlow.model(
             snapshots: selected.map(\.snapshot),
             titles: selected.map(\.title),
             tints: selected.map { Optional($0.tint) },
             expanded: true,
-            language: lang,
-            customLogos: selected.map { Self.cgImage(from: $0.customLogoData) }
+            language: lang
         )
         pendingShare = ShareRequest(
             catalog: catalog,
             selectedIDs: Set(selected.map(\.id)),
             expanded: true,
             isGlobal: isGlobal,
-            result: composed
+            model: card
         )
-    }
-
-    private static func cgImage(from data: Data?) -> CGImage? {
-        guard let data, let image = UIImage(data: data) else { return nil }
-        return image.cgImage
     }
 
     private var blocksAccountDeepLink: Bool {

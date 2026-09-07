@@ -8,7 +8,9 @@ struct SharePreviewSheet: View {
     @Environment(\.appLanguage) private var lang
     @Environment(\.dismiss) private var dismiss
     @State private var options: ShareComposeOptions
-    @State private var result: ShareResult
+    /// 预览用的结构化内容：切开关只改它，不生成任何位图。
+    @State private var model: ShareCardModel
+    @State private var assets: ShareCardAssets
     /// 全局分享：true = 分享展开（显示三选项），false = 分享折叠（隐藏三选项）。
     @State private var optionsExpanded: Bool
     @State private var toast: String?
@@ -18,12 +20,15 @@ struct SharePreviewSheet: View {
     /// 「编辑」：从首页目录里多选要出图的实例。
     @State private var showInstancePicker = false
     @State private var selectedIDs: Set<String>
+    /// 预览可用宽度，画布按它对 390pt 等比缩放。
+    @State private var previewWidth: CGFloat = ShareLayout.canvasWidth
 
     init(request: ShareRequest) {
         self.request = request
         let stored = SharedStore.shared.shareComposeOptions
         _options = State(initialValue: stored)
-        _result = State(initialValue: request.result)
+        _model = State(initialValue: request.model)
+        _assets = State(initialValue: ShareCardAssets.make())
         _optionsExpanded = State(initialValue: true)
         _selectedIDs = State(initialValue: request.selectedIDs)
     }
@@ -31,14 +36,9 @@ struct SharePreviewSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if let image = UIImage(data: result.pngData) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                }
+                sharePreviewCanvas
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // 底部操作区悬浮在滚动内容之上：长图从液态玻璃面板下方滚过
@@ -80,10 +80,10 @@ struct SharePreviewSheet: View {
                 ShareInstancePickerSheet(catalog: request.catalog, selectedIDs: $selectedIDs)
             }
             .onChange(of: selectedIDs) { _, _ in
-                recompose()
+                withAnimation(Self.morph) { remodel() }
             }
             .onAppear {
-                recompose()
+                remodel()
                 Self.tapHaptic.prepare()
             }
         }
@@ -119,23 +119,23 @@ struct SharePreviewSheet: View {
             HStack(spacing: 8) {
                 chip(L10n.tr("share.opt.details", lang), on: options.showMetricDetails) {
                     options.showMetricDetails.toggle()
-                    persistAndRecompose()
+                    persistAndRemodel()
                 }
                 chip(L10n.tr("share.opt.hideTime", lang), on: options.hideUpdateTime) {
                     options.hideUpdateTime.toggle()
-                    persistAndRecompose()
+                    persistAndRemodel()
                 }
                 chip(L10n.tr("share.opt.hideUnused", lang), on: options.hideUnusedMetrics) {
                     options.hideUnusedMetrics.toggle()
-                    persistAndRecompose()
+                    persistAndRemodel()
                 }
                 chip(L10n.tr("share.opt.sameColor", lang), on: options.sameColorBars) {
                     options.sameColorBars.toggle()
-                    persistAndRecompose()
+                    persistAndRemodel()
                 }
                 chip(L10n.tr("share.opt.glow", lang), on: options.rainbowGlow) {
                     options.rainbowGlow.toggle()
-                    persistAndRecompose()
+                    persistAndRemodel()
                 }
             }
             .padding(.horizontal, 2)
@@ -216,28 +216,73 @@ struct SharePreviewSheet: View {
         }
     }
 
-    private func persistAndRecompose() {
-        SharedStore.shared.shareComposeOptions = options
-        recompose()
+    /// 与首页卡片展开同款：弹性推进，元素各自滑到新位置而不是整块跳变。
+    private static let morph = Animation.snappy(duration: 0.32, extraBounce: 0.06)
+
+    /// 画布按可用宽度等比缩放；`ShareCardView` 内部恒按 390pt 布局。
+    /// 高度得先知道原始高度才能缩放，所以用与渲染器同一套几何算出来，不靠测量回读。
+    private var sharePreviewCanvas: some View {
+        VStack(spacing: 0) {
+            // 零高的量宽器：只拿父容器宽度，不参与布局高度。
+            GeometryReader { geo in
+                Color.clear
+                    .onChange(of: geo.size.width, initial: true) { _, width in
+                        previewWidth = width
+                    }
+            }
+            .frame(height: 0)
+
+            let scale = min(previewWidth / ShareLayout.canvasWidth, 1)
+            ShareCardView(model: model, assets: assets, lang: lang)
+                .scaleEffect(scale, anchor: .top)
+                .frame(width: previewWidth,
+                       height: ShareLayout.canvasHeight(of: model) * scale,
+                       alignment: .top)
+        }
     }
 
-    private func recompose() {
+    private func persistAndRemodel() {
+        SharedStore.shared.shareComposeOptions = options
+        withAnimation(Self.morph) { remodel() }
+    }
+
+    /// 只重算结构化内容。位图留到真正要分享 / 保存那一刻再合成。
+    private func remodel() {
+        let use = pickedInputs
+        model = ShareImageComposer.model(
+            snapshots: use.map(\.snapshot),
+            expanded: request.expanded,
+            language: lang,
+            hasIcon: !options.hideBrandRow,
+            hasQR: !options.hideBrandRow,
+            options: options,
+            logoProviders: Set(ProviderID.allCases),
+            titles: use.map(\.title),
+            tints: use.map { Optional($0.tint) },
+            displayMode: SharedStore.shared.usageDisplayMode,
+            resetTimeStyle: SharedStore.shared.resetTimeStyle
+        )
+        assets = ShareCardAssets.make(customLogoData: use.map(\.customLogoData))
+    }
+
+    private var pickedInputs: [ShareCardInput] {
         let items = ShareCardInput.picked(from: request.catalog, ids: selectedIDs)
-        let use = items.isEmpty ? request.catalog : items
-        result = ShareFlow.compose(
+        return items.isEmpty ? request.catalog : items
+    }
+
+    /// 分享 / 保存要真图：此刻才渲一次预览那棵视图树，全程不缓存、不落盘。
+    @MainActor
+    private func composedPNG() -> Data? {
+        let use = pickedInputs
+        return ShareFlow.compose(
             snapshots: use.map(\.snapshot),
             titles: use.map(\.title),
             tints: use.map { Optional($0.tint) },
             expanded: request.expanded,
             language: lang,
             options: options,
-            customLogos: use.map { Self.cgImage(from: $0.customLogoData) }
-        )
-    }
-
-    private static func cgImage(from data: Data?) -> CGImage? {
-        guard let data, let image = UIImage(data: data) else { return nil }
-        return image.cgImage
+            customLogos: use.map(\.customLogoData)
+        )?.pngData
     }
 
     private static let tapHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -251,7 +296,8 @@ struct SharePreviewSheet: View {
         case .saveToPhotos:
             Task {
                 do {
-                    try await ShareFlow.saveToPhotos(result.pngData)
+                    guard let png = composedPNG() else { throw ShareFlow.ShareError.invalidImage }
+                    try await ShareFlow.saveToPhotos(png)
                     toast = L10n.tr("share.saved", lang)
                 } catch {
                     toast = L10n.tr("share.failed", lang)
@@ -264,9 +310,13 @@ struct SharePreviewSheet: View {
                 toast = L10n.tr("share.wechat.missing", lang)
                 return
             }
-            if let fileURL = ShareFlow.temporaryImageFile(result.pngData) {
+            guard let png = composedPNG() else {
+                toast = L10n.tr("share.failed", lang)
+                return
+            }
+            if let fileURL = ShareFlow.temporaryImageFile(png) {
                 activityItems = [fileURL]
-            } else if let image = UIImage(data: result.pngData) {
+            } else if let image = UIImage(data: png) {
                 activityItems = [image]
             }
         case .moments:
@@ -277,15 +327,18 @@ struct SharePreviewSheet: View {
             }
             Task {
                 do {
-                    try await ShareFlow.prepareForMoments(result.pngData)
+                    guard let png = composedPNG() else { throw ShareFlow.ShareError.invalidImage }
+                    try await ShareFlow.prepareForMoments(png)
                     showMomentsGuide = true
                 } catch {
                     toast = L10n.tr("share.failed", lang)
                 }
             }
         case .more:
-            if let image = UIImage(data: result.pngData) {
+            if let png = composedPNG(), let image = UIImage(data: png) {
                 activityItems = [image]
+            } else {
+                toast = L10n.tr("share.failed", lang)
             }
         }
     }

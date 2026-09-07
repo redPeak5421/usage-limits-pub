@@ -2,7 +2,6 @@ import CoreGraphics
 #if canImport(CoreImage)
 import CoreImage
 #endif
-import CoreText
 import Foundation
 import ImageIO
 
@@ -144,6 +143,10 @@ public struct ShareCardModel: Equatable, Sendable {
         public var provider: ProviderID
         public var providerName: String
         public var planName: String?
+        /// 周期短标签（月 / 季 / 年，已本地化）；只有「明细」开着且套餐查得到标价才有。
+        public var planCycleTag: String?
+        /// 该周期的官方标价；nil = 标价表没收录，套餐行退回纯文本。
+        public var planPrice: String?
         public var meters: [ShareMeter]
         public var updateTime: String?
         public var includesLogo: Bool
@@ -156,10 +159,18 @@ public struct ShareCardModel: Equatable, Sendable {
             tint ?? (isCustom ? TintResolver.customDefault : provider.builtinTint)
         }
 
+        /// 套餐行画成首页同款胶囊：套餐名恒有一枚，「明细」开着才多出周期与标价。
+        public var planBadges: [String] {
+            guard let planName else { return [] }
+            return [planName, planCycleTag, planPrice].compactMap { $0 }
+        }
+
         public init(
             provider: ProviderID,
             providerName: String,
             planName: String?,
+            planCycleTag: String? = nil,
+            planPrice: String? = nil,
             meters: [ShareMeter],
             updateTime: String?,
             includesLogo: Bool,
@@ -169,6 +180,8 @@ public struct ShareCardModel: Equatable, Sendable {
             self.provider = provider
             self.providerName = providerName
             self.planName = planName
+            self.planCycleTag = planCycleTag
+            self.planPrice = planPrice
             self.meters = meters
             self.updateTime = updateTime
             self.includesLogo = includesLogo
@@ -182,6 +195,12 @@ public struct ShareResult: Sendable {
     public let image: CGImage
     public let pngData: Data
     public let model: ShareCardModel
+
+    public init(image: CGImage, pngData: Data, model: ShareCardModel) {
+        self.image = image
+        self.pngData = pngData
+        self.model = model
+    }
 
     public var options: ShareComposeOptions { model.options }
 
@@ -338,7 +357,22 @@ public enum ShareImageComposer {
                 return snap.provider.localizedName(language)
             }()
             let plan = snap.planName.map { L10n.tr($0, language) }
+            // 周期与标价只跟「明细」开关走，与首页展开态同一次查询口径。
+            let price = options.showMetricDetails
+                ? PlanCatalog.listPrice(
+                    planName: snap.planName,
+                    billingCycle: snap.billingCycle,
+                    appStoreBilling: snap.billingSource == "app_store",
+                    productID: snap.planProductID,
+                    provider: snap.provider
+                )
+                : nil
+            let cycleTag = price == nil
+                ? nil
+                : L10n.tr((snap.billingCycle ?? .monthly).tag, language)
             if let plan { texts.append(plan) }
+            if let cycleTag { texts.append(cycleTag) }
+            if let price { texts.append(price) }
             texts.append(title)
             texts.append(contentsOf: meters.map { "\($0.label)  \($0.valueText)" })
             texts.append(contentsOf: meters.flatMap { [$0.detailText, $0.resetText].compactMap { $0 } })
@@ -347,6 +381,8 @@ public enum ShareImageComposer {
                 provider: snap.provider,
                 providerName: title,
                 planName: plan,
+                planCycleTag: cycleTag,
+                planPrice: price,
                 meters: meters,
                 updateTime: update,
                 includesLogo: !snap.isCustom && logoProviders.contains(snap.provider),
@@ -373,446 +409,11 @@ public enum ShareImageComposer {
         )
     }
 
-    /// 已发布入口：合成 PNG + 模型 + 分享载荷。
-    public static func compose(
-        snapshots: [ProviderSnapshot],
-        titles: [String] = [],
-        tints: [BrandTint?] = [],
-        expanded: Bool,
-        language: AppLanguage,
-        icon: CGImage? = nil,
-        qr: CGImage? = nil,
-        options: ShareComposeOptions = ShareComposeOptions(),
-        logos: [ProviderID: CGImage] = [:],
-        customMark: CGImage? = nil,
-        customMarks: [CGImage?] = [],
-        displayMode: UsageDisplayMode = .used,
-        resetTimeStyle: ResetTimeStyle = .countdown,
-        now: Date = Date()
-    ) -> ShareResult {
-        let qrImage = qr ?? ShareChrome.qrImage()
-        let showBrand = !options.hideBrandRow
-        let model = model(
-            snapshots: snapshots,
-            expanded: expanded,
-            language: language,
-            hasIcon: icon != nil && showBrand,
-            hasQR: qrImage != nil && showBrand,
-            options: options,
-            logoProviders: Set(logos.keys),
-            titles: titles,
-            tints: tints,
-            displayMode: displayMode,
-            resetTimeStyle: resetTimeStyle,
-            now: now
-        )
-        let image = render(
-            model: model, snapshots: snapshots, icon: icon, qr: qrImage,
-            logos: logos, customMark: customMark, customMarks: customMarks
-        )
-        let png = pngData(from: image) ?? Data()
-        return ShareResult(image: image, pngData: png, model: model)
-    }
-
-    /// 保存到相册与分享到其他 App 都从同一份合成结果取 PNG。
+    /// 保存到相册与分享到其他 App 都从同一份渲染结果取 PNG。
     public static func payload(from result: ShareResult) -> (pngData: Data, activityItems: [Data]) {
         (result.pngData, result.activityItems)
     }
 
-    private static let width: CGFloat = 390
-    private static let scale: CGFloat = 3
-    /// 大卡片四周留白，给阴影留出呼吸空间。
-    private static let margin: CGFloat = 16
-    /// 大卡片内边距。
-    private static let padding: CGFloat = 16
     /// 画布顶部预留（pt）。全屏查看时避开刘海 / 灵动岛（约 59pt）。
     public static let topSafeReserve: CGFloat = 59
-
-    private static func render(
-        model: ShareCardModel,
-        snapshots: [ProviderSnapshot],
-        icon: CGImage?,
-        qr: CGImage?,
-        logos: [ProviderID: CGImage] = [:],
-        customMark: CGImage? = nil,
-        customMarks: [CGImage?] = []
-    ) -> CGImage {
-        let brandH: CGFloat = 108
-        let scanH: CGFloat = 18
-        let meterH: CGFloat = 36
-        let labelOnlyH: CGFloat = 20
-        var bodyH: CGFloat = 0
-        for section in model.sections {
-            bodyH += 18 + 8
-            if section.planName != nil { bodyH += 16 }
-            bodyH += metersHeight(section.meters, meterH: meterH, labelOnlyH: labelOnlyH) + 16
-            if section.updateTime != nil { bodyH += 16 }
-        }
-        bodyH += CGFloat(max(model.sections.count - 1, 0)) * 10
-        let showBrand = model.brandAtBottom
-        // 全部内容（含扫码文案）收在一张带阴影的大圆角卡片内。
-        let shellH = padding + bodyH + (showBrand ? 12 + brandH + 10 + scanH : 0) + padding
-        // 顶部多留 topSafeReserve，全屏查看时刘海 / 灵动岛压在空白上，不挡首条标题。
-        let topPad = model.topSafeReserve + margin
-        let height = topPad + shellH + margin
-        let contentX = margin + padding
-        let contentW = width - (margin + padding) * 2
-        let pw = Int(width * scale)
-        let ph = Int(height * scale)
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil, width: pw, height: ph, bitsPerComponent: 8, bytesPerRow: 0,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return fallbackImage()
-        }
-        ctx.translateBy(x: 0, y: CGFloat(ph))
-        ctx.scaleBy(x: scale, y: -scale)
-
-        ctx.setFillColor(CGColor(srgbRed: 0.93, green: 0.94, blue: 0.96, alpha: 1))
-        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
-
-        let shellRect = CGRect(x: margin, y: topPad, width: width - margin * 2, height: shellH)
-        if model.options.rainbowGlow {
-            drawRainbowGlow(ctx, around: shellRect, radius: 24)
-        }
-        ctx.saveGState()
-        ctx.setShadow(
-            offset: CGSize(width: 0, height: -4 * scale),
-            blur: 8 * scale,
-            color: CGColor(gray: 0.3, alpha: 0.14)
-        )
-        fillRoundRect(ctx, shellRect, 24, CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
-        ctx.restoreGState()
-
-        var y = topPad + padding
-
-        for (index, section) in model.sections.enumerated() {
-            let metersH = metersHeight(section.meters, meterH: meterH, labelOnlyH: labelOnlyH)
-            let cardH = 18 + 8 + (section.planName != nil ? 16 : 0)
-                + metersH + 16
-                + (section.updateTime != nil ? 16 : 0)
-            fillRoundRect(ctx, CGRect(x: contentX, y: y, width: contentW, height: cardH), 16,
-                          CGColor(srgbRed: 0.955, green: 0.965, blue: 0.978, alpha: 1))
-            let sectionTint = section.resolvedTint
-            let tint = sectionTint.startCGColor
-            let logoRect = CGRect(x: contentX + 16, y: y + 16, width: 18, height: 18)
-            if section.isCustom {
-                let mark = customMarks.indices.contains(index)
-                    ? (customMarks[index] ?? customMark)
-                    : customMark
-                if let mark {
-                    ctx.interpolationQuality = .high
-                    drawUpright(mark, in: logoRect, context: ctx)
-                } else {
-                    fillRoundRect(ctx, CGRect(x: contentX + 16, y: y + 22, width: 8, height: 8), 4, tint)
-                }
-            } else if let logo = logos[section.provider] {
-                ctx.interpolationQuality = .high
-                drawUpright(logo, in: logoRect, context: ctx)
-            } else {
-                fillRoundRect(ctx, CGRect(x: contentX + 16, y: y + 22, width: 8, height: 8), 4, tint)
-            }
-            drawText(
-                section.providerName,
-                in: CGRect(x: contentX + 40, y: y + 14, width: 220, height: 22),
-                size: 16, weight: .semibold, color: CGColor(gray: 0.12, alpha: 1), context: ctx
-            )
-            var ly = y + 38
-            if let plan = section.planName {
-                drawText(
-                    plan, in: CGRect(x: contentX + 16, y: ly, width: contentW - 32, height: 16),
-                    size: 12, weight: .medium, color: tint, context: ctx
-                )
-                ly += 16
-            }
-            if section.meters.isEmpty {
-                drawText(
-                    "—", in: CGRect(x: contentX + 16, y: ly, width: contentW - 32, height: 20),
-                    size: 13, weight: .regular, color: CGColor(gray: 0.45, alpha: 1), context: ctx
-                )
-            } else {
-                for meter in section.meters {
-                    let sameColor = model.options.sameColorBars
-                    let valueColor = sameColor ? tint : levelColor(meter.usedPercent)
-                    drawText(
-                        meter.label,
-                        in: CGRect(x: contentX + 16, y: ly, width: 200, height: 16),
-                        size: 13, weight: .regular, color: CGColor(gray: 0.2, alpha: 1), context: ctx
-                    )
-                    drawText(
-                        meter.valueText,
-                        in: CGRect(x: contentX + contentW - 16 - 80, y: ly, width: 80, height: 16),
-                        size: 13, weight: .semibold, color: valueColor, context: ctx, align: .right
-                    )
-                    if let used = meter.usedPercent {
-                        let barRect = CGRect(x: contentX + 16, y: ly + 18, width: contentW - 32, height: 6)
-                        let pct = UsagePresentation.barPercent(used: used, mode: model.displayMode)
-                        let fillW = max(barRect.width * CGFloat(pct / 100), pct > 0 ? 4 : 0)
-                        if sameColor {
-                            // 同色条：渐变按轨道完整长度铺开，已用部分只是「揭开」前段
-                            drawTintedBar(ctx, barRect: barRect, fillWidth: fillW, tint: sectionTint)
-                        } else {
-                            fillRoundRect(ctx, barRect, 3, valueColor.copy(alpha: 0.18) ?? valueColor)
-                            if fillW > 0 {
-                                fillRoundRect(ctx, CGRect(x: barRect.minX, y: barRect.minY, width: fillW, height: barRect.height), 3, valueColor)
-                            }
-                        }
-                        ly += meterH
-                    } else {
-                        ly += labelOnlyH
-                    }
-                    if meter.hasCaption {
-                        // 无条指标的标签行只有 20pt，不能套用进度条行的上移量，否则两行文字重叠。
-                        let captionY = ly - (meter.usedPercent == nil ? 0 : 8)
-                        if let detail = meter.detailText {
-                            drawText(
-                                detail,
-                                in: CGRect(x: contentX + 16, y: captionY, width: contentW - 32, height: 12),
-                                size: 10, weight: .regular, color: CGColor(gray: 0.55, alpha: 1), context: ctx
-                            )
-                        }
-                        if let reset = meter.resetText {
-                            drawText(
-                                reset,
-                                in: CGRect(x: contentX + 16, y: captionY, width: contentW - 32, height: 12),
-                                size: 10, weight: .regular, color: CGColor(gray: 0.45, alpha: 1), context: ctx, align: .right
-                            )
-                        }
-                        ly += captionAdvance(for: meter)
-                    }
-                }
-            }
-            if let update = section.updateTime {
-                drawText(
-                    update,
-                    in: CGRect(x: contentX + 16, y: ly, width: contentW - 32, height: 14),
-                    size: 11, weight: .regular, color: CGColor(gray: 0.55, alpha: 1), context: ctx
-                )
-            }
-            y += cardH + 10
-        }
-
-        if showBrand {
-            y += 2
-            fillRoundRect(ctx, CGRect(x: contentX, y: y, width: contentW, height: brandH), 16,
-                          CGColor(srgbRed: 0.955, green: 0.965, blue: 0.978, alpha: 1))
-            let iconRect = CGRect(x: contentX + 16, y: y + 26, width: 56, height: 56)
-            if let icon {
-                ctx.saveGState()
-                ctx.addPath(CGPath(roundedRect: iconRect, cornerWidth: 12, cornerHeight: 12, transform: nil))
-                ctx.clip()
-                // 画布 y 向下；直接 draw 会把 App 图标上下颠倒，再翻一次与主屏一致。
-                drawUpright(icon, in: iconRect, context: ctx)
-                ctx.restoreGState()
-            } else {
-                fillRoundRect(ctx, iconRect, 12, CGColor(srgbRed: 0.15, green: 0.45, blue: 0.85, alpha: 1))
-            }
-            drawText(
-                model.title, in: CGRect(x: contentX + 84, y: y + 42, width: 170, height: 26),
-                size: 20, weight: .semibold, color: CGColor(gray: 0.12, alpha: 1), context: ctx
-            )
-            let qrRect = CGRect(x: contentX + contentW - 16 - 72, y: y + 18, width: 72, height: 72)
-            if let qr {
-                ctx.interpolationQuality = .none
-                drawUpright(qr, in: qrRect, context: ctx)
-                ctx.interpolationQuality = .default
-            }
-            // 扫码文案画在大卡片内部（品牌区下方），不落在卡片外。
-            if let scan = model.visibleTexts.last, scan.contains("Usage Limits") || scan.contains("扫码") {
-                drawText(
-                    scan,
-                    in: CGRect(x: contentX, y: y + brandH + 10, width: contentW, height: scanH),
-                    size: 11, weight: .regular, color: CGColor(gray: 0.45, alpha: 1), context: ctx,
-                    align: .center
-                )
-            }
-        }
-
-        return ctx.makeImage() ?? fallbackImage()
-    }
-
-    private static func levelColor(_ percent: Double?) -> CGColor {
-        switch UsagePresentation.riskLevel(for: percent) {
-        case .unknown: return CGColor(gray: 0.55, alpha: 1)
-        case .low: return CGColor(srgbRed: 0.20, green: 0.72, blue: 0.35, alpha: 1)
-        case .medium: return CGColor(srgbRed: 0.95, green: 0.55, blue: 0.15, alpha: 1)
-        case .high: return CGColor(srgbRed: 0.90, green: 0.22, blue: 0.21, alpha: 1)
-        }
-    }
-
-    /// 同色用量条：渐变（或纯色）按轨道完整长度铺，填充区域只是揭开渐变前段。
-    private static func drawTintedBar(
-        _ ctx: CGContext, barRect: CGRect, fillWidth: CGFloat, tint: BrandTint
-    ) {
-        guard let gradient = CGGradient(
-            colorsSpace: CGColorSpaceCreateDeviceRGB(),
-            colors: [tint.startCGColor, tint.endCGColor] as CFArray,
-            locations: [0, 1]
-        ) else { return }
-        func draw(in clip: CGRect, alpha: CGFloat) {
-            ctx.saveGState()
-            ctx.addPath(CGPath(roundedRect: clip, cornerWidth: 3, cornerHeight: 3, transform: nil))
-            ctx.clip()
-            ctx.setAlpha(alpha)
-            ctx.drawLinearGradient(
-                gradient,
-                start: CGPoint(x: barRect.minX, y: barRect.midY),
-                end: CGPoint(x: barRect.maxX, y: barRect.midY),
-                options: []
-            )
-            ctx.restoreGState()
-        }
-        draw(in: barRect, alpha: 0.18)
-        if fillWidth > 0 {
-            draw(
-                in: CGRect(x: barRect.minX, y: barRect.minY, width: fillWidth, height: barRect.height),
-                alpha: 1
-            )
-        }
-    }
-
-    private static func drawRainbowGlow(_ ctx: CGContext, around rect: CGRect, radius: CGFloat) {
-        let colors: [CGColor] = [
-            CGColor(srgbRed: 1.00, green: 0.42, blue: 0.62, alpha: 1), // 粉
-            CGColor(srgbRed: 0.72, green: 0.40, blue: 0.98, alpha: 1), // 紫
-            CGColor(srgbRed: 0.30, green: 0.56, blue: 1.00, alpha: 1), // 蓝
-            CGColor(srgbRed: 0.20, green: 0.82, blue: 0.90, alpha: 1), // 青
-            CGColor(srgbRed: 1.00, green: 0.60, blue: 0.38, alpha: 1), // 橙
-        ]
-        let locations: [CGFloat] = [0, 0.28, 0.55, 0.8, 1]
-        guard let gradient = CGGradient(
-            colorsSpace: CGColorSpaceCreateDeviceRGB(),
-            colors: colors as CFArray,
-            locations: locations
-        ) else { return }
-        let cardPath = CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
-        let steps = 12
-        let spread: CGFloat = 13
-        for i in 1...steps {
-            let d = spread * CGFloat(i) / CGFloat(steps)
-            let outer = rect.insetBy(dx: -d, dy: -d)
-            let outerPath = CGPath(
-                roundedRect: outer, cornerWidth: radius + d, cornerHeight: radius + d, transform: nil
-            )
-            ctx.saveGState()
-            ctx.addPath(outerPath)
-            ctx.addPath(cardPath)
-            ctx.clip(using: .evenOdd)
-            ctx.setAlpha(0.07)
-            ctx.drawLinearGradient(
-                gradient,
-                start: CGPoint(x: rect.minX, y: rect.minY),
-                end: CGPoint(x: rect.maxX, y: rect.maxY),
-                options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
-            )
-            ctx.restoreGState()
-        }
-    }
-
-    /// 当前画布是 UIKit 坐标系（y 向下）。`CGContext.draw` 把图像底边对齐 rect.origin，
-    /// 直接画会上下颠倒；绕 rect 再翻一次，方向与主屏 App 图标一致。
-    private static func drawUpright(_ image: CGImage, in rect: CGRect, context ctx: CGContext) {
-        ctx.saveGState()
-        ctx.translateBy(x: rect.minX, y: rect.maxY)
-        ctx.scaleBy(x: 1, y: -1)
-        ctx.draw(image, in: CGRect(origin: .zero, size: rect.size))
-        ctx.restoreGState()
-    }
-
-    /// 明细占高同时用于画布测量与绘制：无条指标额外留 8pt，保持标题、明细、下一指标的间距。
-    private static func captionAdvance(for meter: ShareMeter) -> CGFloat {
-        meter.usedPercent == nil ? 22 : 14
-    }
-
-    private static func metersHeight(_ meters: [ShareMeter], meterH: CGFloat, labelOnlyH: CGFloat) -> CGFloat {
-        if meters.isEmpty { return meterH }
-        return meters.reduce(0) {
-            $0 + ($1.usedPercent == nil ? labelOnlyH : meterH) + ($1.hasCaption ? captionAdvance(for: $1) : 0)
-        }
-    }
-
-    private static func fillRoundRect(_ ctx: CGContext, _ rect: CGRect, _ radius: CGFloat, _ color: CGColor) {
-        ctx.saveGState()
-        ctx.setFillColor(color)
-        ctx.addPath(CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil))
-        ctx.fillPath()
-        ctx.restoreGState()
-    }
-
-    private static func drawText(
-        _ string: String,
-        in rect: CGRect,
-        size: CGFloat,
-        weight: FontWeight,
-        color: CGColor,
-        context: CGContext,
-        align: CTTextAlignment = .left
-    ) {
-        let font = CTFontCreateUIFontForLanguage(weight.uiFont, size, nil)
-            ?? CTFontCreateWithName("Helvetica" as CFString, size, nil)
-        var alignment = align
-        let para = withUnsafeBytes(of: &alignment) { raw in
-            let settings = [CTParagraphStyleSetting(
-                spec: .alignment,
-                valueSize: MemoryLayout<CTTextAlignment>.size,
-                value: raw.baseAddress!
-            )]
-            return CTParagraphStyleCreate(settings, settings.count)
-        }
-        let attrs: [CFString: Any] = [
-            kCTFontAttributeName: font,
-            kCTForegroundColorAttributeName: color,
-            kCTParagraphStyleAttributeName: para,
-        ]
-        let attr = CFAttributedStringCreate(nil, string as CFString, attrs as CFDictionary)!
-        let line = CTLineCreateWithAttributedString(attr)
-        context.saveGState()
-        context.textMatrix = .identity
-        context.translateBy(x: 0, y: rect.maxY)
-        context.scaleBy(x: 1, y: -1)
-        let typo = CTLineGetTypographicBounds(line, nil, nil, nil)
-        let x: CGFloat
-        switch align {
-        case .center: x = rect.midX - CGFloat(typo) / 2
-        case .right: x = rect.maxX - CGFloat(typo)
-        default: x = rect.minX
-        }
-        context.textPosition = CGPoint(x: x, y: 4)
-        CTLineDraw(line, context)
-        context.restoreGState()
-    }
-
-    private enum FontWeight {
-        case regular, medium, semibold
-        var uiFont: CTFontUIFontType {
-            switch self {
-            case .regular: return .system
-            case .medium: return .emphasizedSystem
-            case .semibold: return .emphasizedSystem
-            }
-        }
-    }
-
-    public static func pngData(from image: CGImage) -> Data? {
-        let data = NSMutableData()
-        guard let dest = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil) else {
-            return nil
-        }
-        CGImageDestinationAddImage(dest, image, nil)
-        guard CGImageDestinationFinalize(dest) else { return nil }
-        return data as Data
-    }
-
-    private static func fallbackImage() -> CGImage {
-        let space = CGColorSpaceCreateDeviceRGB()
-        let ctx = CGContext(
-            data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0,
-            space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        )!
-        ctx.setFillColor(CGColor(gray: 1, alpha: 1))
-        ctx.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
-        return ctx.makeImage()!
-    }
 }

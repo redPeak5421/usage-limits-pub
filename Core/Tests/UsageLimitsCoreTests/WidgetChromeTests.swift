@@ -322,7 +322,7 @@ final class WidgetChromeTests: XCTestCase {
         XCTAssertFalse(preview.contains("Button(\"OK\""), "分享 toast 不得写死英文 OK")
         XCTAssertTrue(preview.contains("item.customLogoData"), "分享选择器自定义卡须能用 customLogoData")
         let shareRender = try String(
-            contentsOf: root.appendingPathComponent("Core/Sources/UsageLimitsCore/ShareImage.swift"), encoding: .utf8
+            contentsOf: root.appendingPathComponent("App/Share/ShareCardView.swift"), encoding: .utf8
         )
         XCTAssertTrue(shareRender.contains("if let used = meter.usedPercent"), "usedPercent==nil 不得画 0% 空条")
     }

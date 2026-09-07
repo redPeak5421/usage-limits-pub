@@ -171,7 +171,7 @@ final class BrandTintTests: XCTestCase {
             "未传 tint 回落内置品牌色"
         )
         XCTAssertTrue(result.model.sections.contains { $0.meters.contains { $0.usedPercent != nil } })
-        XCTAssertGreaterThan(result.image.width, 0, "渐变同色条渲染不崩溃")
+        XCTAssertEqual(result.canvasWidth, ShareLayout.canvasWidth, "渐变同色条不改画布尺寸")
     }
 
     func testWatchProviderOverridesPreferPrimaryAccountTint() {
