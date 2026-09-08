@@ -57,12 +57,19 @@ final class LaunchStoreConfigTests: XCTestCase {
     }
 
     /// 工程文件由 XcodeGen 生成、不入库，只看 `project.yml`（工程源）。
-    func testIPhoneTargetsAreFamilyOne() throws {
+    /// App/Widget 自 2026-09 起适配 iPad（TARGETED_DEVICE_FAMILY = "1,2"），Watch 仍是 4。
+    func testAppAndWidgetSupportIPadFamily() throws {
         let yml = try String(contentsOf: root.appendingPathComponent("project.yml"), encoding: .utf8)
-        XCTAssertFalse(yml.contains("TARGETED_DEVICE_FAMILY: \"1,2\""), "App/Widget 不得再声明 iPad")
+        XCTAssertEqual(
+            yml.components(separatedBy: "TARGETED_DEVICE_FAMILY: \"1,2\"").count - 1, 3,
+            "顶层默认 + App 目标 + Widget 目标三处都应是 iPhone+iPad"
+        )
         XCTAssertTrue(yml.contains("TARGETED_DEVICE_FAMILY: \"4\""), "Watch 仍是 4")
         XCTAssertTrue(yml.contains("PRODUCT_BUNDLE_IDENTIFIER: com.canonforge.usagelimits.widget"))
-        XCTAssertTrue(yml.contains("TARGETED_DEVICE_FAMILY: \"1\""))
+        XCTAssertFalse(
+            yml.contains("TARGETED_DEVICE_FAMILY: \"1\"\n"),
+            "不应再残留仅 iPhone 的旧声明（App/Widget 已改 1,2，Watch 用的是 4）"
+        )
         XCTAssertFalse(yml.contains("DEVELOPMENT_TEAM"), "团队 ID 只放 project.local.yml，不入库")
     }
 

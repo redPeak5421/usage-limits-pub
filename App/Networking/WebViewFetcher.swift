@@ -386,6 +386,17 @@ final class WebViewFetcher: NSObject {
     """
 
     /// WKWebView / 宿主窗必须用有限正尺寸。CGRect.zero 会触发 Invalid frame dimension。
+    ///
+    /// 现有调用方都不传 scene，所以这里返回的一律是 390×844。但它只是**构造时的初始 frame**，
+    /// 不等于页面最终跑在什么视口上，iPad 上尤其要分三类看（2026-09-08 核对源码得出）：
+    ///
+    /// - 普通离屏探针页（`webView(for:)`）：建完不进视图层级，也没人改 frame，
+    ///   整个生命周期就停在 390×844，站点按移动版 SSR。
+    /// - 可见登录页与 OAuth 弹窗（`LoginSheetView`）：`UIViewRepresentable` 一上屏就被 SwiftUI
+    ///   按 sheet 的实际尺寸重新布局，390×844 只活到第一次 layout。
+    /// - 即梦接管页（`attachBehindDashboardIfNeeded`）：frame 被改成 key window 的 bounds 并挂
+    ///   `[.flexibleWidth, .flexibleHeight]`，跟着 iPad 窗口一起缩放，只有 window bounds 为空时
+    ///   才退回这里的 390×844。
     static func safeContentFrame(in scene: UIWindowScene? = nil) -> CGRect {
         let raw = scene?.screen.bounds.size ?? CGSize(width: 390, height: 844)
         let width = raw.width.isFinite && raw.width >= 320 ? raw.width : 390

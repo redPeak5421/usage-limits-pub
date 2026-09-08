@@ -64,6 +64,7 @@ struct ColorEditorSheet: View {
                     Text(L10n.tr("tint.restoreDefault.footer", lang))
                 }
             }
+            .readableWidth()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

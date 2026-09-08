@@ -34,6 +34,7 @@ struct CustomTokenSheet: View {
                 }
                 .listRowBackground(Color.clear)
             }
+            .readableWidth()
             .navigationTitle(L10n.tr("custom.token.title", lang))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

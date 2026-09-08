@@ -184,6 +184,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .readableWidth()
         .alert(item: $feedbackAlert) { alert in
             Alert(
                 title: Text(L10n.tr(alert.titleKey, lang)),

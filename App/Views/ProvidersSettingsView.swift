@@ -69,6 +69,7 @@ struct ProvidersSettingsView: View {
                 }
             }
         }
+        .readableWidth()
         .confirmationDialog(
             L10n.tr("providers.resetTints.confirm", lang),
             isPresented: $showResetTintsConfirm,
@@ -398,6 +399,7 @@ struct AddProviderSheet: View {
                 }
 
             }
+            .readableWidth()
             .navigationTitle(L10n.tr("providers.add", lang))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

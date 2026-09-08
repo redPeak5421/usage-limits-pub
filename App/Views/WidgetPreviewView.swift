@@ -6,6 +6,8 @@ struct WidgetPreviewView: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var edition: Edition
     @Environment(\.appLanguage) private var lang
+    /// regular 宽度（iPad）下预览按原生尺寸封顶居中，不跟着容器一起放大。
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var smallAccountID: String = ""
     @State private var overviewSelection: Set<String> = []
     @State private var previewExpanded = false
@@ -139,6 +141,8 @@ struct WidgetPreviewView: View {
                 }
             }
             .padding(.vertical, 20)
+            // 滚动条仍贴容器边，只把内容收进可读栏宽；背景由外层 ScrollView 负责
+            .readableWidth(background: nil)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(L10n.tr("settings.widgetPreview", lang))
@@ -257,7 +261,8 @@ struct WidgetPreviewView: View {
         }
     }
 
-    /// 2×2 用原生尺寸居中；2×4 / 4×4 拉到「屏宽 − 主屏边距」，等比缩放，边距与桌面小组件一致。
+    /// 2×2 用原生尺寸居中；2×4 / 4×4 拉到「容器宽 − 主屏边距」，等比缩放，边距与桌面小组件一致。
+    /// regular 宽度（iPad）下再封顶到原生尺寸并居中：容器有 700pt 宽，不封顶会把小组件放大两倍。
     @ViewBuilder
     private func previewCard<Content: View>(
         native: CGSize,
@@ -269,7 +274,7 @@ struct WidgetPreviewView: View {
             .frame(width: native.width, height: native.height)
             .background(widgetBackground)
         if fillWidth {
-            Color.clear
+            let box = Color.clear
                 .aspectRatio(native.width / native.height, contentMode: .fit)
                 .overlay {
                     GeometryReader { geo in
@@ -279,7 +284,15 @@ struct WidgetPreviewView: View {
                             .frame(width: geo.size.width, height: geo.size.height)
                     }
                 }
-                .padding(.horizontal, Self.homeScreenWidgetInset)
+            if horizontalSizeClass == .regular {
+                box
+                    .frame(maxWidth: native.width)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, Self.homeScreenWidgetInset)
+            } else {
+                box
+                    .padding(.horizontal, Self.homeScreenWidgetInset)
+            }
         } else {
             card.frame(maxWidth: .infinity)
         }

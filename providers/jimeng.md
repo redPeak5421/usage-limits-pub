@@ -88,6 +88,9 @@
 - 登录页弹确认：`jimengIndicatesLogin`（会话 Cookie 名）或 `jimengPageIndicatesLogin`（`JimengSession.pageLoginScript`）任一为真。Cookie / SSR 旁证只负责弹确认，不算已抓到积分。
 - 点确认后：`prepareJimengLivePage` 在可见登录页等 `isLoading` 结束；不在 `/ai-tool/` 或匿名 SSR 且无签名器时只重载一次 home；再等 `__isLogined` + `webSignBody`（`isCommerceReady`）约 3s，等不到也放行（有 native 签名）。随后 `adoptLiveJimengWebView` 接管这张 WKWebView 给首页复用。
 - 接管的页挂进 key window 最底层：全尺寸、不透明、`isUserInteractionEnabled = false`，不 `makeKeyAndVisible`（近乎透明宿主窗会被 iOS freezer 杀掉 WebContent；禁止 `CGRect.zero`）。首页下拉 / 自动刷新优先复用（诊断 `jimeng.probe= live`），无热文档才走离屏页（`offscreen`）；离屏页加载后等会话 Cookie 最多 2s。
+- **iPad 视口（2026-09-08 待验证项）**：接管页的 frame = key window bounds 并 autoresize，所以在 iPad 上它是**窗口那么宽**，不是 390×844。模拟器上以未登录状态打开 `/ai-tool/home`（iPad Air 11 全屏竖屏，视口 820pt，UA 未变）实测拿到的是**桌面版布局**，不是移动版。离屏探针页不受影响，仍是固定 390×844 的移动版 SSR。
+  桌面版 SSR 是否照样写 `window.__isLogined` / `webSignBody`，需要真实账号在 iPad 上登录后才能定论——**尚未验证**，不得据此断言即梦在 iPad 上可用或不可用。若真机验证发现形状变化，按本文件顶部的维护顺序同轮更新目录、脚本与 fixture；不要为此改 UA 或改回隐藏小窗。
+
 - 探针 JS 内 `__jimengWaitHomeReady`：有 native 签名给 SSR / 签名器约 2s，否则约 10s 再等签名器最多 8s；都不要求 uifid。
 - 诊断只写布尔与 HTTP 摘要，不写 Cookie / token / uifid 值。
 

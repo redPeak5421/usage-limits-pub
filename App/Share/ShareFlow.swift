@@ -124,12 +124,103 @@ enum ShareFlow {
 }
 
 /// 系统分享面板：「分享」入口用，载荷是合成图。
+///
+/// iPhone 上 `UIActivityViewController` 是半屏卡片，iPad 上是 popover：没有
+/// `popoverPresentationController.sourceView` / `sourceRect` 就会在呈现瞬间抛
+/// NSInternalInconsistencyException 崩掉。所以这里不把它当成 SwiftUI 的 sheet 内容，
+/// 而是挂一个空的宿主控制器，由宿主自己 present 并把锚点设成自身正中、无箭头。
 struct ActivityShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
+    /// nil / 空数组 = 不呈现；赋值即请求呈现一次。
+    let items: [Any]?
+    /// 面板关掉（完成或取消）后回调，调用方据此把 items 清回 nil。
+    var onFinish: () -> Void
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    func makeUIViewController(context: Context) -> ActivityAnchorController {
+        let controller = ActivityAnchorController()
+        controller.onFinish = onFinish
+        controller.request(items: items)
+        return controller
     }
 
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: ActivityAnchorController, context: Context) {
+        uiViewController.onFinish = onFinish
+        uiViewController.request(items: items)
+    }
+}
+
+/// 分享面板的宿主：只负责给 iPad popover 一个合法锚点，自身不画任何东西。
+final class ActivityAnchorController: UIViewController {
+    var onFinish: () -> Void = {}
+    private var pending: [Any]?
+    /// 「面板已经在我这儿」的缓存标记。真身是 `presentedViewController`，这个标记只防重复呈现，
+    /// 随时可能与真身脱节（见 `syncShowingWithPresentation`），所以每个入口都先校正再判断。
+    private var showing = false
+    /// 每次新请求配一次重试机会：guard 拦下（祖先正在 present、还没进窗口）时下一轮 runloop 再试一次。
+    /// 不做无限重试，避免呈现条件长期不满足时空转主队列。
+    private var retryArmed = false
+
+    func request(items: [Any]?) {
+        syncShowingWithPresentation()
+        guard let items, !items.isEmpty else {
+            pending = nil
+            retryArmed = false
+            return
+        }
+        pending = items
+        retryArmed = true
+        presentIfPossible()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // 首次 update 时视图可能还没进窗口，进窗口后补一次。
+        presentIfPossible()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        // 自己离屏时面板必然不在了；标记留在 true 会把本页的分享锁死。
+        syncShowingWithPresentation()
+    }
+
+    /// UIKit 会静默拒绝 present（祖先正在 present、正在转场），这种情况不会走
+    /// `completionWithItemsHandler`，`showing` 就永远停在 true，本页此后再也分享不出去。
+    /// 拿真身校正：没有被呈现的控制器就说明面板不在，标记复位。
+    private func syncShowingWithPresentation() {
+        if showing, presentedViewController == nil { showing = false }
+    }
+
+    private func scheduleRetry() {
+        guard retryArmed, pending != nil else { return }
+        retryArmed = false
+        DispatchQueue.main.async { [weak self] in self?.presentIfPossible() }
+    }
+
+    private func presentIfPossible() {
+        syncShowingWithPresentation()
+        guard !showing, presentedViewController == nil, view.window != nil,
+              let items = pending else {
+            scheduleRetry()
+            return
+        }
+        showing = true
+        pending = nil
+        let activity = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = activity.popoverPresentationController {
+            // 宿主铺在预览滚动区背后，bounds 非空；退化成零尺寸时退回上层视图，绝不留 nil。
+            let host: UIView = view
+            let anchor: UIView = host.bounds.isEmpty ? (host.superview ?? host) : host
+            popover.sourceView = anchor
+            popover.sourceRect = CGRect(x: anchor.bounds.midX, y: anchor.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        activity.completionWithItemsHandler = { [weak self] _, _, _, _ in
+            self?.showing = false
+            self?.onFinish()
+        }
+        present(activity, animated: true) { [weak self] in
+            // 呈现被拒时真身仍是 nil；就地复位，别把标记留成 true。
+            self?.syncShowingWithPresentation()
+        }
+    }
 }

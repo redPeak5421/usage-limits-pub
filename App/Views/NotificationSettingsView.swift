@@ -18,6 +18,7 @@ struct NotificationSettingsView: View {
             resetSection
             prepaidSection
         }
+        .readableWidth()
         .navigationTitle(L10n.tr("settings.notifications", lang))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { reloadDrafts() }

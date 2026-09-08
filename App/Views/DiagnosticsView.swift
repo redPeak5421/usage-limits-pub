@@ -29,6 +29,8 @@ struct DiagnosticsView: View {
                 .listStyle(.plain)
             }
         }
+        // 诊断日志是 .plain 列表，底色跟着系统底色而不是分组灰
+        .readableWidth(background: Color(.systemBackground))
         .navigationTitle(L10n.tr("settings.diagLog", lang))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

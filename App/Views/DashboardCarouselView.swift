@@ -34,6 +34,13 @@ private struct DashboardBlankTapCandidate {
 struct DashboardCarouselView: View {
     /// 两侧留白 20pt（参考的 320 宽在 402pt 屏上留白 41pt，用户要求减半、卡片等比放大）。
     private static let maximumCollapsedCardWidth: CGFloat = 362
+    /// 宽屏（iPad 竖屏、Stage Manager 大窗）纵向盘面还有余量时按场景高度等比放大卡片的系数：
+    /// = iPhone 竖屏基准（362pt 卡宽 / 874pt 场景高）。轮盘的纵向盘距、螺旋的螺距都随卡高走，
+    /// 保持这个比例，放大后的盘面上下仍不会被裁掉。
+    /// 这个系数只在 `horizontalSizeClass == .regular` 时参与计算，手机一律走 362 上限，见 `sceneCanvas`。
+    private static let collapsedCardWidthPerSceneHeight: CGFloat = 362.0 / 874.0
+    /// 放大的绝对上限：再大卡片内容（字号固定）会显得空。
+    private static let widescreenCollapsedCardWidth: CGFloat = 520
     private static let visibleOpacityThreshold = 0.03
     private static let blankDoubleTapInterval: TimeInterval = 0.320
     private static let blankDoubleTapDistance: CGFloat = 24
@@ -59,6 +66,8 @@ struct DashboardCarouselView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     @Environment(\.scenePhase) private var scenePhase
+    /// 卡片放大只认宽度 size class：regular = iPad 全屏 / 竖屏 / 大窗；compact = 所有 iPhone 与窄分屏。
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var controlRegions: [UUID: CGRect] = [:]
     /// 计量条区域：触摸可从这里开始并滚动场景，只是不从这里起整卡排序（长按交给计量条的上下文菜单）
@@ -199,10 +208,19 @@ struct DashboardCarouselView: View {
             activeIDs: activeIDs,
             frontVirtualIndex: frontVirtualIndex
         )
-        let collapsedCardWidth = min(
-            max(proxy.size.width - 40, 0),
-            Self.maximumCollapsedCardWidth
-        )
+        let horizontalRoom = max(proxy.size.width - 40, 0)
+        let compactCardWidth = min(horizontalRoom, Self.maximumCollapsedCardWidth)
+        // 放大只在 regular 宽度启用，不用窗高阈值判断：iPhone Plus / Max 竖屏窗高 932 / 956pt，
+        // 按 362/874 的高度比推导会把它们的卡宽放大 6.6%–9.4%，而这些机型仍是 compact 宽度、
+        // 必须与改动前逐像素一致。size class 才是「iPad 全屏 / 竖屏 / 大窗」的准确判据，
+        // 窄分屏（compact）自动落回下面的 362 上限口径。
+        let widescreenCardWidth: CGFloat = horizontalSizeClass == .regular
+            ? min(
+                horizontalRoom,
+                min(proxy.size.height * Self.collapsedCardWidthPerSceneHeight, Self.widescreenCollapsedCardWidth)
+            )
+            : 0
+        let collapsedCardWidth = max(compactCardWidth, widescreenCardWidth)
         let collapsedCardHeight = collapsedCardWidth * (53.98 / 85.6)
         let cardSize = CGSize(width: collapsedCardWidth, height: collapsedCardHeight)
         let selectedTint = model.selectedID.flatMap { itemDictionary[$0]?.tint }

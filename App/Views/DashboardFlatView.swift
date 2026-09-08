@@ -4,6 +4,8 @@ import UsageLimitsCore
 
 /// 首页「平铺」主题：原版竖向列表。卡片按存储顺序铺开、原位展开；整卡长按拖动排序；下拉刷新。
 /// 卡面走系统白 / 黑（`sceneTheme: nil`），深浅色跟随外观设置。
+/// regular 宽度（iPad 竖 / 横屏、Stage Manager 大窗）改铺自适应多列，单列的行为一条不改：
+/// 卡片仍原位展开（顶边固定、只向下长），同一行的邻卡顶对齐、始终可见。
 struct DashboardFlatView: View {
     let items: [DashboardSceneItem]
     let showsDemoBanner: Bool
@@ -23,41 +25,45 @@ struct DashboardFlatView: View {
     @Environment(\.appLanguage) private var lang
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    /// regular 宽度（iPad 竖 / 横屏、Stage Manager 大窗）铺多列；compact（iPhone、iPad 1/3 分屏）保持单列原版。
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     /// 正在长按拖动的卡片。
     @State private var draggingAccountID: UUID?
     @State private var draggingProvider: ProviderID?
     @State private var cardFrames: [UUID: CGRect] = [:]
     @State private var reorderTick = 0
+    /// 当前压在视口顶边的那张卡。多列 / 单列容器互换时整段内容重建、滚动偏移归零，
+    /// 靠它把阅读位置滚回来（`DashboardScrollAnchor`）。展开状态另有 `expandedIDs` 保管。
+    @State private var topAnchor: DashboardSceneItemID?
+
+    /// 多列时的列定义：列宽 360–460pt。iPad 竖屏 2 列、横屏 3 列、13 寸横屏也是 3 列（4 列要 4×360 + 3×14 + 32 = 1514pt，超过任何 iPad）。
+    private static let wideColumns = [
+        GridItem(.adaptive(minimum: 360, maximum: 460), spacing: 14, alignment: .top),
+    ]
+
+    /// 多列只在 regular 宽度启用；compact 走下面的单列分支，布局与 iPhone 逐像素一致。
+    private var usesMultiColumn: Bool {
+        horizontalSizeClass == .regular
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 14) {
-                    if showsDemoBanner {
-                        demoBanner
-                    }
-                    if showsEmptyHint {
-                        allDisabledHint
-                    }
-                    // 已添加账号按存储顺序展示，允许不同服务商穿插；演示橱窗卡排在后面。
-                    ForEach(items) { item in
-                        card(item)
-                            .id(item.id)
-                    }
-                    privacyFooter
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .coordinateSpace(name: "dashboardList")
-                .sensoryFeedback(.selection, trigger: reorderTick)
-                .onDrop(of: [.text], delegate: AccountListDropDelegate(
-                    draggingID: $draggingAccountID,
-                    frames: $cardFrames,
-                    onMove: { moving, target in
-                        withAnimation(expansionAnimation) { onMoveAccount(moving, target) }
-                        reorderTick += 1
-                    }
-                ))
+                listContent
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .coordinateSpace(name: "dashboardList")
+                    .sensoryFeedback(.selection, trigger: reorderTick)
+                    .onDrop(of: [.text], delegate: AccountListDropDelegate(
+                        draggingID: $draggingAccountID,
+                        frames: $cardFrames,
+                        // 多列时按二维读序判定插入点；单列传 nil，仍走原来的中线滞回判定。
+                        multiColumnOrder: usesMultiColumn ? accountOrder : nil,
+                        onMove: { moving, target in
+                            withAnimation(expansionAnimation) { onMoveAccount(moving, target) }
+                            reorderTick += 1
+                        }
+                    ))
             }
             .background(Color(.systemGroupedBackground))
             .dashboardHidesSystemScrollEdgeEffect()
@@ -68,14 +74,100 @@ struct DashboardFlatView: View {
             .onChange(of: revealTarget) { _, target in
                 reveal(target, using: proxy)
             }
+            .onChange(of: usesMultiColumn) { _, _ in
+                restoreTopAnchor(using: proxy)
+            }
             .onAppear {
                 reveal(revealTarget, using: proxy)
             }
         }
     }
 
+    /// 单列（compact）与多列（regular）共用同一批卡片视图，只换容器：
+    /// 卡片仍是原位展开（顶边固定、只向下长），多列里同一行的邻卡保持顶对齐、始终可见。
+    @ViewBuilder
+    private var listContent: some View {
+        if usesMultiColumn {
+            VStack(spacing: 14) {
+                // 这三块是单列文本，铺满多列屏会横跨整块玻璃；收进可读栏宽居中。
+                // 背景传 nil：外层 ScrollView 已有底色，再铺一层会盖住它。
+                if showsDemoBanner {
+                    demoBanner
+                        .readableWidth(background: nil)
+                }
+                if showsEmptyHint {
+                    allDisabledHint
+                        .readableWidth(background: nil)
+                }
+                LazyVGrid(columns: Self.wideColumns, spacing: 14) {
+                    cardList
+                }
+                privacyFooter
+                    .readableWidth(background: nil)
+            }
+        } else {
+            LazyVStack(spacing: 14) {
+                if showsDemoBanner {
+                    demoBanner
+                }
+                if showsEmptyHint {
+                    allDisabledHint
+                }
+                cardList
+                privacyFooter
+            }
+        }
+    }
+
+    /// 已添加账号按存储顺序展示，允许不同服务商穿插；演示橱窗卡排在后面。
+    private var cardList: some View {
+        ForEach(items) { item in
+            card(item)
+                .modifier(tracksTopAnchor(item))
+                .id(item.id)
+        }
+    }
+
+    /// 账号卡的当前显示顺序（多列拖动排序按它算读序插入点）。
+    private var accountOrder: [UUID] {
+        items.compactMap { item in
+            if case .account(let id) = item.id { return id }
+            return nil
+        }
+    }
+
     private var expansionAnimation: Animation? {
         reduceMotion ? nil : .snappy(duration: 0.25)
+    }
+
+    /// 每张卡只上报自己相对视口顶边的三段位置（`onGeometryChange` 仅在取值变化时回调），
+    /// 滚动过程中不会逐像素写状态。
+    private func tracksTopAnchor(_ item: DashboardSceneItem) -> some ViewModifier {
+        TopAnchorReporter(
+            item: item.id,
+            isFirstItem: items.first?.id == item.id,
+            anchor: $topAnchor
+        )
+    }
+
+    private struct TopAnchorReporter: ViewModifier {
+        let item: DashboardSceneItemID
+        let isFirstItem: Bool
+        @Binding var anchor: DashboardSceneItemID?
+
+        func body(content: Content) -> some View {
+            content.onGeometryChange(for: DashboardScrollAnchor.CardPosition.self) { proxy in
+                let frame = proxy.frame(in: .scrollView(axis: .vertical))
+                return DashboardScrollAnchor.position(minY: frame.minY, maxY: frame.maxY)
+            } action: { position in
+                anchor = DashboardScrollAnchor.updated(
+                    anchor: anchor,
+                    card: item,
+                    position: position,
+                    isFirstItem: isFirstItem
+                )
+            }
+        }
     }
 
     @ViewBuilder
@@ -154,6 +246,20 @@ struct DashboardFlatView: View {
         }
     }
 
+    /// 多列 / 单列容器互换后把阅读位置滚回锚点。锚点为空代表原本就在最顶，什么都不做。
+    /// 不带动画：这一步是在补容器重建丢掉的偏移量，不是用户发起的滚动。
+    private func restoreTopAnchor(using proxy: ScrollViewProxy) {
+        guard let topAnchor else { return }
+        // 新容器这一帧刚建好，等布局落定再滚，否则 scrollTo 落在旧几何上。
+        // 滚两次：懒容器只有滚过去之后才把沿途的卡真正建出来，展开的卡一变高，第一次的落点
+        // 就会短一截（实测两列滚到 DeepSeek 那行、缩窄后停在上一行）。第二次按真实高度收尾。
+        Task { @MainActor in
+            proxy.scrollTo(topAnchor, anchor: .top)
+            try? await Task.sleep(for: .milliseconds(50))
+            proxy.scrollTo(topAnchor, anchor: .top)
+        }
+    }
+
     private func reveal(_ target: DashboardSceneItemID?, using proxy: ScrollViewProxy) {
         guard let target else { return }
         withAnimation(reduceMotion ? nil : .default) {
@@ -169,10 +275,12 @@ struct DashboardFlatView: View {
         draggingProvider = nil
     }
 
-    /// 容器级判定：用指针 Y 与各卡中线换位，间隙也能落点。
+    /// 容器级判定：单列用指针 Y 与各卡中线换位，间隙也能落点；多列改按二维读序判定
+    /// （`multiColumnOrder` 非空时生效），否则同一行并排的卡中线相同、纵向判定会失效。
     private struct AccountListDropDelegate: DropDelegate {
         @Binding var draggingID: UUID?
         @Binding var frames: [UUID: CGRect]
+        let multiColumnOrder: [UUID]?
         let onMove: @MainActor (UUID, UUID?) -> Void
 
         func validateDrop(info: DropInfo) -> Bool {
@@ -181,7 +289,7 @@ struct DashboardFlatView: View {
 
         func dropUpdated(info: DropInfo) -> DropProposal? {
             MainActor.assumeIsolated {
-                applyPointer(Double(info.location.y))
+                applyPointer(info.location)
             }
             return DropProposal(operation: .move)
         }
@@ -192,12 +300,39 @@ struct DashboardFlatView: View {
         }
 
         @MainActor
-        private func applyPointer(_ pointerY: Double) {
+        private func applyPointer(_ pointer: CGPoint) {
             guard let dragging = draggingID else { return }
-            let cards = frames
-                .map { (id: $0.key, midY: Double($0.value.midY)) }
-                .sorted { $0.midY < $1.midY }
-            switch DragReorder.decision(pointerY: pointerY, cards: cards, dragging: dragging) {
+            let decision: DragReorder.Decision
+            if let multiColumnOrder {
+                // 按显示顺序取出已测量的卡（含被拖卡），交给 Core 的纯几何判定。
+                let cards = multiColumnOrder.compactMap { id in
+                    frames[id].map {
+                        GridDragReorder.Card(
+                            id: id,
+                            x: Double($0.origin.x),
+                            y: Double($0.origin.y),
+                            width: Double($0.size.width),
+                            height: Double($0.size.height)
+                        )
+                    }
+                }
+                decision = GridDragReorder.decision(
+                    pointerX: Double(pointer.x),
+                    pointerY: Double(pointer.y),
+                    cards: cards,
+                    dragging: dragging
+                )
+            } else {
+                let cards = frames
+                    .map { (id: $0.key, midY: Double($0.value.midY)) }
+                    .sorted { $0.midY < $1.midY }
+                decision = DragReorder.decision(
+                    pointerY: Double(pointer.y),
+                    cards: cards,
+                    dragging: dragging
+                )
+            }
+            switch decision {
             case .none:
                 break
             case .before(let target):

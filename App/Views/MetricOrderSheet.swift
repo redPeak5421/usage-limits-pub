@@ -61,6 +61,7 @@ struct MetricOrderSheet: View {
                     .accessibilityIdentifier("metricOrder.reset")
                 }
             }
+            .readableWidth()
             .environment(\.editMode, .constant(.active))
             .navigationTitle(target.title)
             .navigationBarTitleDisplayMode(.inline)

@@ -74,6 +74,7 @@ struct AppearanceSettingsView: View {
                 extra
             }
         }
+        .readableWidth()
         .navigationTitle(L10n.tr("settings.appearance", lang))
         .navigationBarTitleDisplayMode(.inline)
     }

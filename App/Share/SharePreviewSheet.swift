@@ -47,6 +47,13 @@ struct SharePreviewSheet: View {
 
     var body: some View {
         NavigationStack {
+            previewContent
+        }
+        .presentationSizing(.page)
+    }
+
+    /// 保留实时画布和滚动补偿；拆短修饰链以控制 Swift 类型检查成本。
+    private var previewScroll: some View {
             ScrollView {
                 sharePreviewCanvas
                     .padding(.horizontal, 16)
@@ -69,6 +76,10 @@ struct SharePreviewSheet: View {
                 shareBottomPanel
             }
             .background(Color(.systemGroupedBackground))
+    }
+
+    private var titledPreview: some View {
+        previewScroll
             .navigationTitle(L10n.tr("share.preview.title", lang))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -76,16 +87,18 @@ struct SharePreviewSheet: View {
                     Button(L10n.tr("login.close", lang)) { dismiss() }
                 }
             }
-            .sheet(item: Binding(
-                get: { activityItems.map { ActivityPayload(items: $0) } },
-                set: { activityItems = $0?.items }
-            )) { payload in
-                ActivityShareSheet(items: payload.items)
+            // 系统分享面板不能塞进 SwiftUI 的 .sheet：UIActivityViewController 在 iPad 上是
+            // popover 形态，被当成 sheet 内容时拿不到 sourceView，UIKit 直接抛异常。
+            // 改成挂在滚动区背后的呈现器，由它自己 present 并给锚点。
+            .background {
+                ActivityShareSheet(items: activityItems) { activityItems = nil }
             }
-            .alert(toast ?? "", isPresented: Binding(
-                get: { toast != nil },
-                set: { if !$0 { toast = nil } }
-            )) {
+    }
+
+    /// 第三段：两个 alert、实例多选 sheet 与生命周期回调。
+    private var previewContent: some View {
+        titledPreview
+            .alert(toast ?? "", isPresented: toastPresented) {
                 Button(L10n.tr("common.ok", lang), role: .cancel) { toast = nil }
             }
             .alert(
@@ -109,7 +122,10 @@ struct SharePreviewSheet: View {
                 remodel(animated: false)
                 Self.tapHaptic.prepare()
             }
-        }
+    }
+
+    private var toastPresented: Binding<Bool> {
+        Binding(get: { toast != nil }, set: { if !$0 { toast = nil } })
     }
 
     /// 单服务商始终显示选项；全局分享可折叠。
@@ -132,6 +148,9 @@ struct SharePreviewSheet: View {
         .padding(.horizontal, 12)
         .padding(.top, 12)
         .padding(.bottom, 4)
+        // regular 宽度下把选项芯片与三个分享目标收进可读栏宽居中，别让三个图标横跨整块 iPad 屏；
+        // 玻璃面板本身仍铺满容器，所以这里不要底色（传 nil），否则会盖掉液态玻璃。
+        .readableWidth(background: nil)
         .frame(maxWidth: .infinity)
         .modifier(LiquidGlassPanel())
     }
@@ -445,11 +464,6 @@ struct SharePreviewSheet: View {
             }
         }
     }
-}
-
-private struct ActivityPayload: Identifiable {
-    let id = UUID()
-    let items: [Any]
 }
 
 /// 从首页可见实例里多选要出图的卡片。至少保留一项。

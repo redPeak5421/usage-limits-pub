@@ -102,6 +102,10 @@ struct LoginSheetView: View {
             )
         }
         .task { await monitorLoop() }
+        // iPad regular 宽度下 sheet 默认是 540×620 的表单卡片，官网登录页会被挤成窄条。
+        // .page 让 sheet 撑到接近整页（iOS 18+，工程 deploymentTarget 就是 18.0）；
+        // iPhone 的 compact 宽度本来就是整宽 sheet，这个修饰符在那边是空操作。
+        .presentationSizing(.page)
     }
 
     /// 登录页打开期间持续轮询登录态；探到已登录只弹确认，点是才关页。

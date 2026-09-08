@@ -12,14 +12,14 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    TARGETED_DEVICE_FAMILY: "1"
+    TARGETED_DEVICE_FAMILY: "1,2"
     # 构建号跟随营销版本（用户 2026-08-26 指示）：TestFlight / App Store 显示 0.2.159 (0.2.159)
     CURRENT_PROJECT_VERSION: $(MARKETING_VERSION)
     # 版本规则 x.y.z（详见 .cursor/rules/version-numbering.mdc）
     # x 大版本，上线前恒 0，仅用户批准可改
     # y 发布轮次，每次确认提交 App Store 时 +1，仅用户批准可改
     # z 已落地功能数+修复数，随改动自动累加，x/y 变动时默认不清零
-    MARKETING_VERSION: 1.5.576
+    MARKETING_VERSION: 1.5.583
     CODE_SIGN_STYLE: Automatic
 # 只是让配置文件在 Xcode 导航里可见（不参与编译）；覆盖层可再追加自己的文件
 fileGroups:
@@ -54,8 +54,12 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        # 只支持竖屏的 App 必须声明全屏，否则 Xcode 提示需支持全部方向
-        UIRequiresFullScreen: true
+        # iPad 支持分屏 / Stage Manager，不声明全屏；Apple 要求非全屏 iPad App 支持四个方向
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
         UIBackgroundModes:
           - fetch
@@ -74,7 +78,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.canonforge.usagelimits
         PRODUCT_NAME: UsageLimits
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
   UsageLimitsWidget:
     type: app-extension
     platform: iOS
@@ -99,7 +103,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.canonforge.usagelimits.widget
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
   UsageLimitsWatch:
     type: application
     platform: watchOS

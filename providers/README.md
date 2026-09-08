@@ -17,6 +17,16 @@
 
 **安装链接拦截**（2026-09-07，所有原生供应商共用）：登录主页面、OAuth 弹窗导航、弹窗创建和离屏探针均拒绝 `itms-services` 等 `LoginWebViewScripts.isAppStoreNavigation` 识别的安装 / 商店协议（大小写不敏感）。检查先于空 host / 同站 / OAuth 路径放行，覆盖 iframe 与重定向，禁止转交系统安装。正常 HTTPS 登录、`about:blank`、WebKit configuration / opener 与同源 fetch 契约保持不变。各供应商端点、鉴权和响应形状本轮未改。
 
+**视口与 UA**（2026-09-08，iPad 适配后核对源码）：UA 只有 `SafariUserAgent.make(systemVersion:)` 一条，登录页与探针共用，iPad 上不按设备类型分叉，各供应商的探针 URL / 鉴权 / 响应形状本轮未改。视口要分三类，不能一句「固定 390×844」带过：
+
+| 页面 | 视口 | 说明 |
+|---|---|---|
+| 普通离屏探针页 | 固定 390×844 | 建完不进视图层级、无人改 frame，站点按移动版 SSR |
+| 可见登录页 / OAuth 弹窗 | SwiftUI 分配 | 390×844 只是初始 frame，上屏即被 sheet 的实际尺寸覆盖 |
+| 即梦接管页 | key window bounds，autoresize | 挂在窗口下并跟随 iPad 窗口缩放，不是固定小窗 |
+
+iPad 上各家的实际响应形状以真机验证为准；发现漂移按本文件顶部的维护顺序同轮更新目录文件、脚本与 fixture。
+
 **展示约定**：某模型/产品未使用（用量为 0 或额度未动）时，首页默认不显示该条（`UsageMetric.hasUsage`）。
 
 **数值约定**（所有供应商一致）：JSON 布尔不是 0/1 用量；`NaN` / `Infinity` / 溢出指数字符串与任何非有限数直接丢弃。所有 Double→Int 先做 finite / 范围检查，日期只接受 1970–9999。快照落盘前递归验证百分比、金额、余额/总额、breakdown / history 和日期；无效快照拒绝落盘并记诊断，不覆盖上一份有效快照。

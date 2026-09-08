@@ -13,8 +13,23 @@ struct DashboardSideKeyView: View {
     /// 启动参数 `--open-side-key`：出现即弹出一级菜单（自动化截图用）。
     let opensMenuOnAppear: Bool
 
-    /// 操作按钮在机身左侧、约整屏高度 22% 处（iPhone 15 Pro 起竖持）；菜单中心对齐到它。
+    /// 操作按钮在机身左侧、约整窗高度 22% 处（iPhone 15 Pro 起竖持）；菜单中心对齐到它。
     private static let actionButtonScreenRatio: CGFloat = 0.22
+
+    /// 锚定基准取 App 自己那扇窗口的高度，不再取 `UIScreen`：iPad 分屏 / Stage Manager 下窗口比屏幕矮，
+    /// 按整屏算会把菜单顶到窗口外（再被下面的 90pt 夹紧贴在边上）。全屏时窗口高 = 屏高，iPhone 上取值与以前一致。
+    /// 不能直接拿 `GeometryReader` 的容器高度当基准：本视图的容器是导航栏与 Home 条之间的内容区，
+    /// 比窗口矮一截，按它算 22% 会把菜单整体下移，iPhone 上的位置就变了。
+    /// 多窗口时优先前台活跃场景的 key window；一扇都拿不到才退回容器高度（`fallback`），结果仍会被下面夹进容器内。
+    @MainActor
+    private static func hostWindowHeight(fallback: CGFloat) -> CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for scene in scenes.filter({ $0.activationState == .foregroundActive }) + scenes {
+            let window = scene.windows.first { $0.isKeyWindow } ?? scene.windows.first
+            if let height = window?.bounds.height, height > 0 { return height }
+        }
+        return fallback
+    }
 
     @Environment(\.appLanguage) private var lang
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -32,10 +47,10 @@ struct DashboardSideKeyView: View {
             }
 
             if let menu = controller.menu {
-                // 菜单竖直位置对齐机身左侧的操作按钮（按整屏高度的比例定位，再换算到本视图坐标）
+                // 菜单竖直位置对齐机身左侧的操作按钮（按整窗高度的比例定位，再换算到本视图坐标）
                 GeometryReader { proxy in
-                    let screenHeight = UIScreen.main.bounds.height
-                    let targetY = screenHeight * Self.actionButtonScreenRatio - proxy.frame(in: .global).minY
+                    let hostHeight = Self.hostWindowHeight(fallback: proxy.size.height)
+                    let targetY = hostHeight * Self.actionButtonScreenRatio - proxy.frame(in: .global).minY
                     menuColumn(menu)
                         .padding(.leading, 14)
                         .frame(width: proxy.size.width, alignment: .leading)

@@ -58,6 +58,7 @@ struct AppIconView: View {
                 Text(errorText ?? L10n.tr("appIcon.footer", lang))
             }
         }
+        .readableWidth()
         .navigationTitle(L10n.tr("settings.appIcon", lang))
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -77,6 +77,7 @@ struct CustomUsageWizardView: View {
                 }
                 saveSection
             }
+            .readableWidth()
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
