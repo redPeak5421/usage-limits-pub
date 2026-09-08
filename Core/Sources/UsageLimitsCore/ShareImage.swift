@@ -191,23 +191,6 @@ public struct ShareCardModel: Equatable, Sendable {
     }
 }
 
-public struct ShareResult: Sendable {
-    public let image: CGImage
-    public let pngData: Data
-    public let model: ShareCardModel
-
-    public init(image: CGImage, pngData: Data, model: ShareCardModel) {
-        self.image = image
-        self.pngData = pngData
-        self.model = model
-    }
-
-    public var options: ShareComposeOptions { model.options }
-
-    /// 系统分享面板与「保存到相册」共用这一份 PNG。
-    public var activityItems: [Data] { [pngData] }
-}
-
 /// 首页一张可见卡片对应的分享条目。同供应商多账号用账号 UUID 区分，
 /// 不能用 `ProviderSnapshot.id`（它只是服务商 rawValue，会撞车）。
 public struct ShareCardInput: Identifiable, Equatable, Sendable {
@@ -407,11 +390,6 @@ public enum ShareImageComposer {
             visibleTexts: texts,
             displayMode: displayMode
         )
-    }
-
-    /// 保存到相册与分享到其他 App 都从同一份渲染结果取 PNG。
-    public static func payload(from result: ShareResult) -> (pngData: Data, activityItems: [Data]) {
-        (result.pngData, result.activityItems)
     }
 
     /// 画布顶部预留（pt）。全屏查看时避开刘海 / 灵动岛（约 59pt）。

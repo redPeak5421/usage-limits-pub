@@ -98,15 +98,16 @@ final class BrandUnlockTests: XCTestCase {
             store.shareComposeOptions
         )
         XCTAssertFalse(store.shareComposeOptions.hideBrandRow)
-        let shown = ShareImageComposer.compose(
+        let shown = ShareImageComposer.model(
             snapshots: SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
                 .filter { $0.provider == .claude },
             expanded: true, language: .zh,
+            hasIcon: true, hasQR: true,
             options: store.shareComposeOptions
         )
-        XCTAssertTrue(shown.model.includesQR)
-        XCTAssertTrue(shown.model.brandAtBottom)
-        XCTAssertTrue(shown.model.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
+        XCTAssertTrue(shown.includesQR)
+        XCTAssertTrue(shown.brandAtBottom)
+        XCTAssertTrue(shown.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
     }
 
     func testHideBrandRowLegacyJSONDefaultsFalse() throws {
@@ -114,21 +115,24 @@ final class BrandUnlockTests: XCTestCase {
         XCTAssertFalse(opts.hideBrandRow)
     }
 
-    func testComposeHidesEntireBrandRowWhenOptionOn() {
+    func testModelHidesEntireBrandRowWhenOptionOn() {
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
         let claude = snaps.first { $0.provider == .claude }!
-        let shown = ShareImageComposer.compose(snapshots: [claude], expanded: true, language: .zh)
-        let hidden = ShareImageComposer.compose(
+        let shown = ShareImageComposer.model(
+            snapshots: [claude], expanded: true, language: .zh, hasIcon: true, hasQR: true
+        )
+        let hidden = ShareImageComposer.model(
             snapshots: [claude], expanded: true, language: .zh,
+            hasIcon: true, hasQR: true,
             options: ShareComposeOptions(hideBrandRow: true)
         )
-        XCTAssertTrue(shown.model.includesQR)
-        XCTAssertTrue(shown.model.brandAtBottom)
-        XCTAssertTrue(shown.model.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
-        XCTAssertFalse(hidden.model.includesQR)
-        XCTAssertFalse(hidden.model.brandAtBottom)
-        XCTAssertFalse(hidden.model.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
-        XCTAssertLessThan(hidden.canvasHeight, shown.canvasHeight)
+        XCTAssertTrue(shown.includesQR)
+        XCTAssertTrue(shown.brandAtBottom)
+        XCTAssertTrue(shown.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
+        XCTAssertFalse(hidden.includesQR)
+        XCTAssertFalse(hidden.brandAtBottom)
+        XCTAssertFalse(hidden.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
+        XCTAssertLessThan(ShareLayout.canvasHeight(of: hidden), ShareLayout.canvasHeight(of: shown))
         XCTAssertEqual(L10n.tr("settings.share.hideBrand", .zh), "隐藏分享二维码")
         for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
             XCTAssertNotEqual(L10n.tr("settings.share.hideBrand", lang), "settings.share.hideBrand")

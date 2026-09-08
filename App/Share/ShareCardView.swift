@@ -2,13 +2,7 @@ import SwiftUI
 import UIKit
 import UsageLimitsCore
 
-/// 分享画布的 SwiftUI 版本：与 `ShareImageComposer.render` 逐项对齐的同一套布局。
-///
-/// 存在的理由是动效——预览里切「明细」要像首页卡片展开那样，徽章从套餐胶囊旁弹出、
-/// 下方每行各自滑到新位置；位图做不到这件事。几何数字全部取自 `ShareLayout`，
-/// 与 CoreGraphics 渲染器共用，改一处两边同时生效。
-///
-/// 画布固定 `ShareLayout.canvasWidth` 宽，高度由内容撑开；调用方自己缩放。
+/// 预览与 PNG 导出共用的画布；几何取自 ShareLayout，调用方按可用宽度缩放。
 struct ShareCardView: View {
     let model: ShareCardModel
     let assets: ShareCardAssets
@@ -308,13 +302,21 @@ struct ShareCardAssets {
     var qr: UIImage?
     /// 按 section 顺序排列的自定义账号商标。
     var customMarks: [UIImage?] = []
+    private var customLogoData: [Data?] = []
+
+    mutating func updateCustomMarks(_ data: [Data?]) {
+        guard data != customLogoData else { return }
+        customLogoData = data
+        customMarks = data.map { $0.flatMap(UIImage.init(data:)) }
+    }
 
     @MainActor
     static func make(customLogoData: [Data?] = []) -> ShareCardAssets {
         ShareCardAssets(
             appIcon: UIImage(named: "ShareAppIcon") ?? UIImage(named: "AppIcon"),
             qr: ShareChrome.qrImage().map { UIImage(cgImage: $0) },
-            customMarks: customLogoData.map { $0.flatMap(UIImage.init(data:)) }
+            customMarks: customLogoData.map { $0.flatMap(UIImage.init(data:)) },
+            customLogoData: customLogoData
         )
     }
 }

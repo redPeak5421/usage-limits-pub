@@ -151,27 +151,27 @@ final class BrandTintTests: XCTestCase {
 
     // MARK: 分享链路
 
-    func testShareModelSectionsResolveTintAndRender() {
+    func testShareModelSectionsResolveTint() {
         let now = Date(timeIntervalSince1970: 1_760_000_000)
         let snap = SharedStore.demoSnapshots(now: now).first { $0.provider == .grok }!
         var options = ShareComposeOptions()
         options.sameColorBars = true
         let gradient = BrandTint(startHex: "#E21680", endHex: "#FF633A")
-        let result = ShareImageComposer.compose(
+        let result = ShareImageComposer.model(
             snapshots: [snap, snap],
-            titles: ["自定义", "默认"],
-            tints: [gradient, nil],
             expanded: true,
             language: .zh,
-            options: options
+            hasIcon: true, hasQR: true,
+            options: options,
+            titles: ["自定义", "默认"],
+            tints: [gradient, nil]
         )
-        XCTAssertEqual(result.model.sections[0].resolvedTint, gradient)
+        XCTAssertEqual(result.sections[0].resolvedTint, gradient)
         XCTAssertEqual(
-            result.model.sections[1].resolvedTint, ProviderID.grok.builtinTint,
+            result.sections[1].resolvedTint, ProviderID.grok.builtinTint,
             "未传 tint 回落内置品牌色"
         )
-        XCTAssertTrue(result.model.sections.contains { $0.meters.contains { $0.usedPercent != nil } })
-        XCTAssertEqual(result.canvasWidth, ShareLayout.canvasWidth, "渐变同色条不改画布尺寸")
+        XCTAssertTrue(result.sections.contains { $0.meters.contains { $0.usedPercent != nil } })
     }
 
     func testWatchProviderOverridesPreferPrimaryAccountTint() {

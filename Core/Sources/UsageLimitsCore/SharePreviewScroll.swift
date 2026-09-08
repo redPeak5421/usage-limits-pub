@@ -1,6 +1,32 @@
 import CoreGraphics
 import Foundation
 
+/// 布局与滚动补偿必须完整收尾后才能开始下一次重排。
+/// 期间仍接收选项变更，合并为一次按最新选项执行的重排，不排队播放过时状态。
+public struct SharePreviewTransition: Sendable {
+    private var running = false
+    private var pending = false
+
+    public init() {}
+
+    public mutating func request() -> Bool {
+        guard !running else {
+            pending = true
+            return false
+        }
+        running = true
+        return true
+    }
+
+    /// 只能由动画的 `.removed` 完成回调调用；逻辑终点仍可能有弹簧尾段。
+    public mutating func complete() -> Bool {
+        running = false
+        let replay = pending
+        pending = false
+        return replay
+    }
+}
+
 /// 分享预览的滚动锚点：记住视口中心那张卡，以及它顶边离视口顶边多远。
 public struct SharePreviewAnchor: Equatable, Sendable {
     /// 锚点卡片在旧模型里的下标；改选择集后按 `key` 找不回时用它兜底。

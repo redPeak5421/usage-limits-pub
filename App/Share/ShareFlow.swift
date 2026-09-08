@@ -56,7 +56,7 @@ enum ShareFlow {
         customLogos: [Data?] = [],
         displayMode: UsageDisplayMode = SharedStore.shared.usageDisplayMode,
         resetTimeStyle: ResetTimeStyle = SharedStore.shared.resetTimeStyle
-    ) -> ShareResult? {
+    ) -> Data? {
         let card = model(
             snapshots: snapshots, titles: titles, tints: tints, expanded: expanded,
             language: language, options: options,

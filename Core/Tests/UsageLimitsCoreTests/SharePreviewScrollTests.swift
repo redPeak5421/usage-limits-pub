@@ -45,6 +45,40 @@ final class SharePreviewScrollTests: XCTestCase {
     private let names = (1...12).map { "服务商 \($0)" }
     private let viewport: CGFloat = 600
 
+    func testInterruptedMorphWaitsForRemovalAndCoalescesRequests() {
+        var transition = SharePreviewTransition()
+        XCTAssertTrue(transition.request())
+        // 这些点击发生在同一次动画的不同阶段；不能重启布局/补偿动画。
+        for _ in 0..<7 { XCTAssertFalse(transition.request()) }
+        XCTAssertTrue(transition.complete(), "完整收尾后只需按最新选项重排一次")
+        XCTAssertTrue(transition.request())
+        XCTAssertFalse(transition.complete(), "没有新点击时不重复播放")
+        XCTAssertTrue(transition.request(), "停顿后仍可正常展开")
+        XCTAssertFalse(transition.complete())
+    }
+
+    func testRequestsDuringFollowUpMorphAreNotLost() {
+        var transition = SharePreviewTransition()
+        for _ in 0..<20 {
+            XCTAssertTrue(transition.request())
+            XCTAssertFalse(transition.request())
+            XCTAssertTrue(transition.complete())
+        }
+        XCTAssertTrue(transition.request())
+        XCTAssertFalse(transition.complete())
+    }
+
+    func testPreviewWaitsForFullAnimationRemovalBeforeReplayingLatestOptions() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("App/Share/SharePreviewSheet.swift"))
+        XCTAssertTrue(source.contains("guard transition.request() else { return }"))
+        XCTAssertTrue(source.contains("completionCriteria: .removed"))
+        XCTAssertTrue(source.contains("if transition.complete() { remodel() }"))
+        XCTAssertFalse(source.contains(".disabled(transition"), "动画期间仍须接收按钮选择")
+    }
+
     func testSectionTopsStayInStepWithCanvasHeight() {
         let m = model(names, caption: true)
         let tops = ShareLayout.sectionTops(of: m)

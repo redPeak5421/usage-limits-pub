@@ -3,6 +3,21 @@ import XCTest
 @testable import UsageLimitsCore
 
 final class ShareImageTests: XCTestCase {
+    private func makeModel(
+        snapshots: [ProviderSnapshot], titles: [String] = [], tints: [BrandTint?] = [],
+        expanded: Bool, language: AppLanguage,
+        options: ShareComposeOptions = ShareComposeOptions(),
+        displayMode: UsageDisplayMode = .used, resetTimeStyle: ResetTimeStyle = .countdown,
+        now: Date = Date()
+    ) -> ShareCardModel {
+        ShareImageComposer.model(
+            snapshots: snapshots, expanded: expanded, language: language,
+            hasIcon: !options.hideBrandRow, hasQR: !options.hideBrandRow,
+            options: options, logoProviders: Set(ProviderID.allCases),
+            titles: titles, tints: tints, displayMode: displayMode,
+            resetTimeStyle: resetTimeStyle, now: now
+        )
+    }
     /// 明细行不得压住上一行：无条指标的标签占 16pt，明细在 20pt 处起画；
     /// 有条指标的明细上提 8pt，仍必须落在进度条下方。历史上两处都叠过。
     func testCaptionRowNeverOverlapsLabelOrBar() {
@@ -20,31 +35,6 @@ final class ShareImageTests: XCTestCase {
             ShareLayout.captionTextHeight,
             "明细占位不得小于其文字高度"
         )
-    }
-
-    private func iconFromAppAsset() -> CGImage? {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("App/Assets.xcassets/AppIcon.appiconset/AppIcon.png")
-        return ShareChrome.cgImage(contentsOf: url)
-    }
-
-    private func loadLogos() -> [ProviderID: CGImage] {
-        let catalog = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("SharedUI/Assets.xcassets")
-        var logos: [ProviderID: CGImage] = [:]
-        for provider in ProviderID.allCases {
-            let url = catalog.appendingPathComponent("\(provider.logoAssetName).imageset/logo.png")
-            if let img = ShareChrome.cgImage(contentsOf: url) { logos[provider] = img }
-        }
-        return logos
     }
 
     func testShareAppIconAssetIsTheAppIconFile() {
@@ -68,42 +58,37 @@ final class ShareImageTests: XCTestCase {
         XCTAssertTrue(src?.contains("ShareAppIcon") == true)
     }
 
-    func testComposeSingleProviderIncludesDisplayedValuesAndChrome() {
+    func testSingleProviderModelIncludesDisplayedValuesAndChrome() {
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
         let claude = snaps.first { $0.provider == .claude }!
-        let icon = iconFromAppAsset()
-        let logos = loadLogos()
-        let result = ShareImageComposer.compose(
-            snapshots: [claude], expanded: true, language: .zh, icon: icon, logos: logos
+        let result = makeModel(
+            snapshots: [claude], expanded: true, language: .zh
         )
-        XCTAssertEqual(result.canvasWidth, 390)
-        XCTAssertGreaterThan(result.canvasHeight, ShareImageComposer.topSafeReserve)
-        XCTAssertEqual(result.model.title, "Usage Limits")
-        XCTAssertTrue(result.model.sections.first?.includesLogo == true)
-        XCTAssertTrue(result.model.includesQR)
-        XCTAssertTrue(result.model.appStoreURL.contains("apps.apple.com"))
-        XCTAssertTrue(result.model.visibleTexts.contains("Usage Limits"))
-        XCTAssertFalse(result.model.includesSubtitle)
-        XCTAssertTrue(result.model.brandAtBottom)
-        XCTAssertTrue(result.model.visibleTexts.contains("Claude"))
-        XCTAssertTrue(result.model.visibleTexts.contains { $0.contains("All models") && $0.contains("61") })
-        XCTAssertTrue(result.model.visibleTexts.contains { $0.contains("Fable") && $0.contains("44") })
+        XCTAssertGreaterThan(ShareLayout.canvasHeight(of: result), ShareImageComposer.topSafeReserve)
+        XCTAssertEqual(result.title, "Usage Limits")
+        XCTAssertTrue(result.sections.first?.includesLogo == true)
+        XCTAssertTrue(result.includesQR)
+        XCTAssertTrue(result.appStoreURL.contains("apps.apple.com"))
+        XCTAssertTrue(result.visibleTexts.contains("Usage Limits"))
+        XCTAssertFalse(result.includesSubtitle)
+        XCTAssertTrue(result.brandAtBottom)
+        XCTAssertTrue(result.visibleTexts.contains("Claude"))
+        XCTAssertTrue(result.visibleTexts.contains { $0.contains("All models") && $0.contains("61") })
+        XCTAssertTrue(result.visibleTexts.contains { $0.contains("Fable") && $0.contains("44") })
     }
 
-    func testComposeAllExpandedIncludesPrepaidAmounts() {
+    func testExpandedModelIncludesPrepaidAmounts() {
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
-        let icon = iconFromAppAsset()
-        let result = ShareImageComposer.compose(
-            snapshots: snaps, expanded: true, language: .zh, icon: icon
+        let result = makeModel(
+            snapshots: snaps, expanded: true, language: .zh
         )
-        XCTAssertEqual(result.canvasWidth, 390)
-        XCTAssertGreaterThan(result.canvasHeight, ShareImageComposer.topSafeReserve)
-        XCTAssertTrue(result.model.includesQR)
-        XCTAssertEqual(result.model.sections.count, snaps.count)
-        XCTAssertTrue(result.model.visibleTexts.contains("DeepSeek"))
-        XCTAssertTrue(result.model.visibleTexts.contains { $0.contains("重置余额") && $0.contains("54.48") })
-        XCTAssertTrue(result.model.visibleTexts.contains { $0.contains("累计消费金额") && $0.contains("95.65") })
-        XCTAssertTrue(result.model.visibleTexts.contains("ChatGPT"))
+        XCTAssertGreaterThan(ShareLayout.canvasHeight(of: result), ShareImageComposer.topSafeReserve)
+        XCTAssertTrue(result.includesQR)
+        XCTAssertEqual(result.sections.count, snaps.count)
+        XCTAssertTrue(result.visibleTexts.contains("DeepSeek"))
+        XCTAssertTrue(result.visibleTexts.contains { $0.contains("重置余额") && $0.contains("54.48") })
+        XCTAssertTrue(result.visibleTexts.contains { $0.contains("累计消费金额") && $0.contains("95.65") })
+        XCTAssertTrue(result.visibleTexts.contains("ChatGPT"))
     }
 
     func testCustomShareSectionDoesNotUsePlaceholderProviderLogo() {
@@ -114,20 +99,17 @@ final class ShareImageTests: XCTestCase {
             status: .ok,
             isCustom: true
         )
-        let logos = loadLogos()
-        XCTAssertNotNil(logos[.claude])
-        let result = ShareImageComposer.compose(
+        let result = makeModel(
             snapshots: [snap],
             titles: ["中转站"],
             expanded: true,
-            language: .zh,
-            logos: logos
+            language: .zh
         )
-        XCTAssertEqual(result.model.sections.count, 1)
-        XCTAssertTrue(result.model.sections[0].isCustom)
-        XCTAssertFalse(result.model.sections[0].includesLogo)
-        XCTAssertEqual(result.model.sections[0].providerName, "中转站")
-        XCTAssertTrue(result.model.visibleTexts.contains { $0.contains("已用") && $0.contains("12.5") })
+        XCTAssertEqual(result.sections.count, 1)
+        XCTAssertTrue(result.sections[0].isCustom)
+        XCTAssertFalse(result.sections[0].includesLogo)
+        XCTAssertEqual(result.sections[0].providerName, "中转站")
+        XCTAssertTrue(result.visibleTexts.contains { $0.contains("已用") && $0.contains("12.5") })
     }
 
     func testCustomShareListsUsedAndBalanceWithoutPercent() {
@@ -173,10 +155,10 @@ final class ShareImageTests: XCTestCase {
             snapshots: [snap], expanded: true, language: .zh, hasIcon: false, hasQR: false,
             displayMode: .used, resetTimeStyle: .countdown, now: now
         )
-        let remaining = ShareImageComposer.compose(
+        let remaining = makeModel(
             snapshots: [snap], expanded: true, language: .en,
             displayMode: .remaining, resetTimeStyle: .absolute, now: now
-        ).model
+        )
 
         XCTAssertEqual(used.sections[0].meters.map(\.valueText), [
             "42%", TimeFormat.reset(reset, now: now, language: .zh, style: .countdown),
@@ -216,17 +198,17 @@ final class ShareImageTests: XCTestCase {
         ]
         XCTAssertNotEqual(items[0].id, items[1].id, "同供应商多账号不能用 snapshot.id（服务商 rawValue）当勾选键")
 
-        let result = ShareImageComposer.compose(
+        let result = makeModel(
             snapshots: items.map(\.snapshot),
             titles: items.map(\.title),
             expanded: true,
             language: .zh
         )
-        XCTAssertEqual(result.model.sections.count, 2)
-        XCTAssertEqual(result.model.sections.map(\.providerName), ["xAI 主号", "xAI 小号"])
-        XCTAssertTrue(result.model.visibleTexts.contains("xAI 主号"))
-        XCTAssertTrue(result.model.visibleTexts.contains("xAI 小号"))
-        XCTAssertTrue(result.model.visibleTexts.contains("SuperGrok Extra"))
+        XCTAssertEqual(result.sections.count, 2)
+        XCTAssertEqual(result.sections.map(\.providerName), ["xAI 主号", "xAI 小号"])
+        XCTAssertTrue(result.visibleTexts.contains("xAI 主号"))
+        XCTAssertTrue(result.visibleTexts.contains("xAI 小号"))
+        XCTAssertTrue(result.visibleTexts.contains("SuperGrok Extra"))
     }
 
     func testInfoPlistDeclaresWeChatQueryAndPhotoAdd() throws {
@@ -253,12 +235,12 @@ final class ShareImageTests: XCTestCase {
         }
     }
 
-    func testComposeDrawsProgressBarMetersNotTextOnly() {
+    func testModelIncludesProgressBarValues() {
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
         let claude = snaps.first { $0.provider == .claude }!
-        let result = ShareImageComposer.compose(snapshots: [claude], expanded: true, language: .zh)
-        XCTAssertTrue(result.model.sections.contains { $0.meters.contains { $0.usedPercent != nil } })
-        let weekly = result.model.sections.first?.meters.first { $0.label == "All models" }
+        let result = makeModel(snapshots: [claude], expanded: true, language: .zh)
+        XCTAssertTrue(result.sections.contains { $0.meters.contains { $0.usedPercent != nil } })
+        let weekly = result.sections.first?.meters.first { $0.label == "All models" }
         XCTAssertEqual(weekly?.usedPercent, 61)
         XCTAssertEqual(weekly?.valueText, "61%")
     }
@@ -266,17 +248,17 @@ final class ShareImageTests: XCTestCase {
     func testHideUnusedOmitsZeroPercentMetric() {
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
         let claude = snaps.first { $0.provider == .claude }!
-        let hidden = ShareImageComposer.compose(
+        let hidden = makeModel(
             snapshots: [claude], expanded: true, language: .zh,
             options: ShareComposeOptions(hideUnusedMetrics: true)
         )
-        XCTAssertFalse(hidden.model.visibleTexts.contains { $0.contains("Sonnet") })
-        XCTAssertFalse(hidden.model.sections.flatMap(\.meters).contains { $0.label == "Sonnet" })
-        let shown = ShareImageComposer.compose(
+        XCTAssertFalse(hidden.visibleTexts.contains { $0.contains("Sonnet") })
+        XCTAssertFalse(hidden.sections.flatMap(\.meters).contains { $0.label == "Sonnet" })
+        let shown = makeModel(
             snapshots: [claude], expanded: true, language: .zh,
             options: ShareComposeOptions(hideUnusedMetrics: false)
         )
-        XCTAssertTrue(shown.model.visibleTexts.contains { $0.contains("Sonnet") })
+        XCTAssertTrue(shown.visibleTexts.contains { $0.contains("Sonnet") })
     }
 
     func testHideUpdateTimeOmitsStamp() {
@@ -284,28 +266,28 @@ final class ShareImageTests: XCTestCase {
         let snaps = SharedStore.demoSnapshots(now: now)
         let claude = snaps.first { $0.provider == .claude }!
         let stamp = L10n.tr("card.updatedAt", .zh, TimeFormat.hourMinute(now))
-        let shown = ShareImageComposer.compose(
+        let shown = makeModel(
             snapshots: [claude], expanded: true, language: .zh,
             options: ShareComposeOptions(hideUpdateTime: false)
         )
-        XCTAssertTrue(shown.model.visibleTexts.contains(stamp))
-        XCTAssertNotNil(shown.model.sections.first?.updateTime)
-        let hidden = ShareImageComposer.compose(
+        XCTAssertTrue(shown.visibleTexts.contains(stamp))
+        XCTAssertNotNil(shown.sections.first?.updateTime)
+        let hidden = makeModel(
             snapshots: [claude], expanded: true, language: .zh,
             options: ShareComposeOptions(hideUpdateTime: true)
         )
-        XCTAssertFalse(hidden.model.visibleTexts.contains(stamp))
-        XCTAssertNil(hidden.model.sections.first?.updateTime)
+        XCTAssertFalse(hidden.visibleTexts.contains(stamp))
+        XCTAssertNil(hidden.sections.first?.updateTime)
     }
 
     func testSameColorOptionRecordedOnResult() {
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
         let claude = snaps.first { $0.provider == .claude }!
-        let off = ShareImageComposer.compose(
+        let off = makeModel(
             snapshots: [claude], expanded: true, language: .zh,
             options: ShareComposeOptions(sameColorBars: false)
         )
-        let on = ShareImageComposer.compose(
+        let on = makeModel(
             snapshots: [claude], expanded: true, language: .zh,
             options: ShareComposeOptions(hideUnusedMetrics: true, sameColorBars: true)
         )
@@ -334,16 +316,15 @@ final class ShareImageTests: XCTestCase {
         XCTAssertTrue(legacy.rainbowGlow)
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
         let claude = snaps.first { $0.provider == .claude }!
-        let off = ShareImageComposer.compose(
+        let off = makeModel(
             snapshots: [claude], expanded: true, language: .zh,
             options: ShareComposeOptions(rainbowGlow: false)
         )
         XCTAssertFalse(off.options.rainbowGlow)
-        let on = ShareImageComposer.compose(snapshots: [claude], expanded: true, language: .zh)
+        let on = makeModel(snapshots: [claude], expanded: true, language: .zh)
         XCTAssertTrue(on.options.rainbowGlow)
         // 光晕只改像素，不改布局：画布尺寸必须逐点相同。
-        XCTAssertEqual(off.canvasWidth, on.canvasWidth)
-        XCTAssertEqual(off.canvasHeight, on.canvasHeight)
+        XCTAssertEqual(ShareLayout.canvasHeight(of: off), ShareLayout.canvasHeight(of: on))
     }
 
     func testGlobalManageLabelIsExpandWhenChipsVisible() {
@@ -460,19 +441,18 @@ final class ShareImageTests: XCTestCase {
         XCTAssertEqual(ShareImageComposer.topSafeReserve, 59)
         let snaps = SharedStore.demoSnapshots(now: Date(timeIntervalSince1970: 1_760_000_000))
         let grok = snaps.first { $0.provider == .grok }!
-        let result = ShareImageComposer.compose(
+        let result = makeModel(
             snapshots: [grok],
             titles: ["Grok-main"],
             expanded: true,
             language: .zh,
             options: ShareComposeOptions(rainbowGlow: false)
         )
-        XCTAssertEqual(result.model.topSafeReserve, 59)
-        XCTAssertTrue(result.model.visibleTexts.contains("Grok-main"))
+        XCTAssertEqual(result.topSafeReserve, 59)
+        XCTAssertTrue(result.visibleTexts.contains("Grok-main"))
         // 顶部这 59pt 是空白：画布高度必须把它算在白卡之外，首条标题才不会被灵动岛挡住。
-        XCTAssertEqual(ShareLayout.canvasHeight(of: result.model), result.canvasHeight)
         XCTAssertGreaterThan(
-            result.canvasHeight,
+            ShareLayout.canvasHeight(of: result),
             ShareImageComposer.topSafeReserve + ShareLayout.margin * 2 + 80
         )
     }
@@ -531,65 +511,65 @@ final class ShareImageTests: XCTestCase {
     /// 周期与标价只跟「明细」开关走：关着时分享图与旧版逐字一致，只有套餐名。
     func testPlanCycleAndPriceFollowDetailsOption() {
         let snap = claudeDemo()
-        let off = ShareImageComposer.compose(
+        let off = makeModel(
             snapshots: [snap], expanded: true, language: .zh,
             options: ShareComposeOptions(showMetricDetails: false)
         )
-        let offSection = off.model.sections[0]
+        let offSection = off.sections[0]
         XCTAssertEqual(offSection.planName, "Claude Max 5x")
         XCTAssertNil(offSection.planCycleTag, "明细关时不带周期")
         XCTAssertNil(offSection.planPrice, "明细关时不带标价")
-        XCTAssertFalse(off.model.visibleTexts.contains("$100"))
+        XCTAssertFalse(off.visibleTexts.contains("$100"))
 
-        let on = ShareImageComposer.compose(
+        let on = makeModel(
             snapshots: [snap], expanded: true, language: .zh,
             options: ShareComposeOptions(showMetricDetails: true)
         )
-        let onSection = on.model.sections[0]
+        let onSection = on.sections[0]
         XCTAssertEqual(onSection.planName, "Claude Max 5x")
         XCTAssertEqual(onSection.planCycleTag, "月")
         XCTAssertEqual(onSection.planPrice, "$100")
-        XCTAssertTrue(on.model.visibleTexts.contains("月"))
-        XCTAssertTrue(on.model.visibleTexts.contains("$100"))
+        XCTAssertTrue(on.visibleTexts.contains("月"))
+        XCTAssertTrue(on.visibleTexts.contains("$100"))
     }
 
     /// 年付账号取年标价、周期标签跟着变成「年」；英文走 L10n 的 yr。
     func testPlanBadgesUseYearlyCycleAndPrice() {
         let yearly = claudeDemo(planName: "Claude Pro", cycle: .yearly)
-        let zh = ShareImageComposer.compose(
+        let zh = makeModel(
             snapshots: [yearly], expanded: true, language: .zh,
             options: ShareComposeOptions(showMetricDetails: true)
         )
-        XCTAssertEqual(zh.model.sections[0].planCycleTag, "年")
-        XCTAssertEqual(zh.model.sections[0].planPrice, "$200")
-        let en = ShareImageComposer.compose(
+        XCTAssertEqual(zh.sections[0].planCycleTag, "年")
+        XCTAssertEqual(zh.sections[0].planPrice, "$200")
+        let en = makeModel(
             snapshots: [yearly], expanded: true, language: .en,
             options: ShareComposeOptions(showMetricDetails: true)
         )
-        XCTAssertEqual(en.model.sections[0].planCycleTag, "yr")
+        XCTAssertEqual(en.sections[0].planCycleTag, "yr")
     }
 
     /// 周期字段缺失但套餐有标价：与首页同口径，按月付兜底。
     func testPlanBadgesFallBackToMonthlyTagWhenCycleMissing() {
         let noCycle = claudeDemo(cycle: nil)
-        let result = ShareImageComposer.compose(
+        let result = makeModel(
             snapshots: [noCycle], expanded: true, language: .zh,
             options: ShareComposeOptions(showMetricDetails: true)
         )
-        XCTAssertEqual(result.model.sections[0].planCycleTag, "月")
-        XCTAssertEqual(result.model.sections[0].planPrice, "$100")
+        XCTAssertEqual(result.sections[0].planCycleTag, "月")
+        XCTAssertEqual(result.sections[0].planPrice, "$100")
     }
 
     /// 标价表里没有的套餐：明细开着也只画套餐名，不能凭空造周期徽章。
     func testPlanBadgesAbsentWithoutListPrice() {
         let free = claudeDemo(planName: "Claude Free", cycle: .monthly)
-        let result = ShareImageComposer.compose(
+        let result = makeModel(
             snapshots: [free], expanded: true, language: .zh,
             options: ShareComposeOptions(showMetricDetails: true)
         )
-        XCTAssertEqual(result.model.sections[0].planName, "Claude Free")
-        XCTAssertNil(result.model.sections[0].planCycleTag)
-        XCTAssertNil(result.model.sections[0].planPrice)
-        XCTAssertFalse(result.model.visibleTexts.contains("月"))
+        XCTAssertEqual(result.sections[0].planName, "Claude Free")
+        XCTAssertNil(result.sections[0].planCycleTag)
+        XCTAssertNil(result.sections[0].planPrice)
+        XCTAssertFalse(result.visibleTexts.contains("月"))
     }
 }

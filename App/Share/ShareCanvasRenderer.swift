@@ -15,7 +15,7 @@ enum ShareCanvasRenderer {
         model: ShareCardModel,
         assets: ShareCardAssets,
         lang: AppLanguage
-    ) -> ShareResult? {
+    ) -> Data? {
         let renderer = ImageRenderer(content: ShareCardView(model: model, assets: assets, lang: lang))
         renderer.scale = scale
         // 分享图始终是浅色画布，不跟随系统外观。
@@ -41,8 +41,6 @@ enum ShareCanvasRenderer {
             draw(context)
             rendered = context.makeImage()
         }
-        guard let cgImage = rendered,
-              let png = UIImage(cgImage: cgImage).pngData() else { return nil }
-        return ShareResult(image: cgImage, pngData: png, model: model)
+        return rendered.flatMap { UIImage(cgImage: $0).pngData() }
     }
 }
