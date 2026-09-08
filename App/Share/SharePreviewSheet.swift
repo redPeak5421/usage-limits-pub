@@ -27,6 +27,12 @@ struct SharePreviewSheet: View {
     /// 滚动几何只在切开关那一刻取用，装在引用盒里：
     /// 若写成 `@State` 数值，滚动每一帧都会让二十几张卡的画布重新求值，滑动直接卡。
     @State private var viewport = ViewportBox()
+    /// 画布总高（画布 pt）。故意与 `model` 分开保存、不参与动画：
+    /// 新滚动偏移是一瞬间落定的，可滚范围必须同一瞬间就位，否则偏移会被旧高度夹住。
+    @State private var canvasHeight: CGFloat
+    /// 历次滚动跳变的累计值（屏幕 pt）。`AnchorPin` 只认它一个状态：
+    /// 拆成「跳多远 + 第几拍」两个状态时，非动画的那个会把动画事务一起带没，补偿恒为 0。
+    @State private var pinBase: CGFloat = 0
 
     init(request: ShareRequest) {
         self.request = request
@@ -36,6 +42,7 @@ struct SharePreviewSheet: View {
         _assets = State(initialValue: ShareCardAssets.make())
         _optionsExpanded = State(initialValue: true)
         _selectedIDs = State(initialValue: request.selectedIDs)
+        _canvasHeight = State(initialValue: ShareLayout.canvasHeight(of: request.model))
     }
 
     var body: some View {
@@ -47,9 +54,12 @@ struct SharePreviewSheet: View {
             }
             .scrollPosition($scrollPosition)
             .onScrollGeometryChange(for: PreviewViewport.self) {
+                // `containerSize` 已经是扣掉导航栏与底部面板之后的净高，别再减一次边距；
+                // `visibleRect` 反过来是连遮挡区一起算的整块。实测（iPhone 17）：
+                // container 523.3 / insets 70 + 218.7 / visibleRect 812。
                 PreviewViewport(
                     top: $0.contentOffset.y + $0.contentInsets.top,
-                    height: $0.containerSize.height - $0.contentInsets.top - $0.contentInsets.bottom
+                    height: $0.containerSize.height
                 )
             } action: { _, geometry in
                 viewport.top = geometry.top
@@ -95,10 +105,10 @@ struct SharePreviewSheet: View {
                 ShareInstancePickerSheet(catalog: request.catalog, selectedIDs: $selectedIDs)
             }
             .onChange(of: selectedIDs) { _, _ in
-                withAnimation(Self.morph) { remodel() }
+                remodel()
             }
             .onAppear {
-                remodel()
+                remodel(animated: false)
                 Self.tapHaptic.prepare()
             }
         }
@@ -255,15 +265,21 @@ struct SharePreviewSheet: View {
 
             ShareCardView(model: model, assets: assets, lang: lang)
                 .scaleEffect(canvasScale, anchor: .top)
+                .modifier(AnchorPin(live: pinBase, settled: pinBase))
+                // 显式绑到 pinBase。同一次重排里还有不参与动画的写入（画布高度、
+                // 滚动偏移），合并出来的事务会把这枚效果的动画一并抹掉，补偿恒为 0。
+                .animation(Self.morph, value: pinBase)
+                // 外框留在补偿与动画之外：可滚范围必须一瞬间就位，
+                // 跟着动画慢慢长，新的滚动偏移会被旧高度夹住。
                 .frame(width: previewWidth,
-                       height: ShareLayout.canvasHeight(of: model) * canvasScale,
+                       height: canvasHeight * canvasScale,
                        alignment: .top)
         }
     }
 
     private func persistAndRemodel() {
         SharedStore.shared.shareComposeOptions = options
-        withAnimation(Self.morph) { remodel() }
+        remodel()
     }
 
     /// 只重算结构化内容。位图留到真正要分享 / 保存那一刻再合成。
@@ -271,12 +287,15 @@ struct SharePreviewSheet: View {
     /// 画布高度会随开关整体变化。若始终以画布顶边为原点，实例一多，
     /// 正在看的那张卡就会被上方卡片的伸缩推出屏幕；所以先记下视口中心那张卡，
     /// 重排完再把它推回同一屏幕位置，上下两侧各自伸缩。
-    private func remodel() {
+    ///
+    /// 分两拍写：可滚范围与滚动偏移**立刻**到位（不能等动画，否则被旧高度夹住），
+    /// 卡片重排走动画；中间那段位移由 `AnchorPin` 先补上再随动画归零。
+    private func remodel(animated: Bool = true) {
         let use = pickedInputs
         let anchor = SharePreviewScroll.anchor(
             in: model, offset: canvasOffset, viewportHeight: canvasViewportHeight
         )
-        model = ShareImageComposer.model(
+        let next = ShareImageComposer.model(
             snapshots: use.map(\.snapshot),
             expanded: request.expanded,
             language: lang,
@@ -289,8 +308,14 @@ struct SharePreviewSheet: View {
             displayMode: SharedStore.shared.usageDisplayMode,
             resetTimeStyle: SharedStore.shared.resetTimeStyle
         )
-        assets = ShareCardAssets.make(customLogoData: use.map(\.customLogoData))
-        restoreScroll(to: anchor)
+        let nextAssets = ShareCardAssets.make(customLogoData: use.map(\.customLogoData))
+        canvasHeight = ShareLayout.canvasHeight(of: next)
+        let shift = pinScroll(to: anchor, in: next)
+        withAnimation(animated ? Self.morph : nil) {
+            model = next
+            assets = nextAssets
+            pinBase += shift
+        }
     }
 
     /// 视口顶边在画布坐标里的位置（pt，未经预览缩放）。停在最顶上时为负，
@@ -305,19 +330,51 @@ struct SharePreviewSheet: View {
     /// 画布外那圈内边距换算到画布坐标。
     private var canvasSlack: CGFloat { Self.canvasVerticalPadding / canvasScale }
 
-    /// 把锚点卡片推回原来的屏幕位置。滚动与内容高度在同一次动画里推进，两边同步。
-    private func restoreScroll(to anchor: SharePreviewAnchor?) {
-        guard let anchor, viewport.height > 0 else { return }
+    /// 把锚点卡片推回原来的屏幕位置，返回这一跳的距离（屏幕 pt）。
+    ///
+    /// 偏移不能跟着动画慢慢走：`ScrollPosition` 落定是一瞬间的事，
+    /// 让它和 0.32 秒的重排各走各的，画面就是先抽一下再回来。
+    /// 所以这里一步到位，视觉上的连续交给 `AnchorPin` 补。
+    private func pinScroll(to anchor: SharePreviewAnchor?, in next: ShareCardModel) -> CGFloat {
+        guard anchor != nil, viewport.height > 0 else { return 0 }
         let target = SharePreviewScroll.restoredOffset(
-            for: anchor, in: model, viewportHeight: canvasViewportHeight, slack: canvasSlack
+            for: anchor, in: next, viewportHeight: canvasViewportHeight, slack: canvasSlack
         )
-        scrollPosition.scrollTo(y: target * canvasScale + Self.canvasVerticalPadding)
+        let y = target * canvasScale + Self.canvasVerticalPadding
+        let shift = y - viewport.top
+        guard abs(shift) > 0.5 else { return 0 }
+        scrollPosition.scrollTo(y: y)
+        return shift
     }
 
     /// `onScrollGeometryChange` 的观察值：只关心视口顶边与可见高度。
     private struct PreviewViewport: Equatable {
-        var top: CGFloat
-        var height: CGFloat
+        var top: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    /// 换内容时把画布先按老位置摆着，再随卡片重排一起退回 0。
+    ///
+    /// 只有 `progress` 参与插值：它从上一拍走到这一拍，`tick - progress` 正好 1 → 0，
+    /// 与卡片的位移共用同一条曲线。于是每一帧「卡片新位置 - 滚动新偏移 + 补偿」都等于老位置，
+    /// 锚点那张卡全程钉住，上下两侧各自伸缩。
+    private struct AnchorPin: GeometryEffect {
+        /// 参与插值：从上一拍的累计值走到这一拍。
+        var live: CGFloat
+        /// 立刻取新值，不插值。
+        var settled: CGFloat
+
+        var animatableData: CGFloat {
+            get { live }
+            set { live = newValue }
+        }
+
+        // 必须是 `GeometryEffect` 而不是 `ViewModifier` + `.offset`：
+        // `.offset` 自己也是可动画的，套在动画子树里会被外层再插值一次，
+        // 两次插值互相抵消，body 算出来的位移一点也落不到屏幕上。
+        func effectValue(size: CGSize) -> ProjectionTransform {
+            ProjectionTransform(CGAffineTransform(translationX: 0, y: settled - live))
+        }
     }
 
     /// 存放上一次滚动几何。故意是引用类型：改它不触发重绘。
