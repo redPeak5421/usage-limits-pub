@@ -111,7 +111,7 @@ final class NotificationTests: XCTestCase {
         ]
         for (key, zh) in expectedZH {
             XCTAssertEqual(L10n.tr(key, .zh), zh)
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 let value = L10n.tr(key, lang)
                 XCTAssertFalse(value.isEmpty, "\(key) \(lang) 缺文案")
                 XCTAssertNotEqual(value, key, "\(key) \(lang) 未翻译")

@@ -145,7 +145,7 @@ final class UsagePresentationTests: XCTestCase {
 
     func testUsageDisplayKeysExistInAllLanguages() {
         for key in ["settings.usageDisplay", "settings.usageDisplay.used", "settings.usageDisplay.remaining", "settings.usageDisplay.footer"] {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) 缺 \(lang) 文案")
             }
         }
@@ -271,7 +271,7 @@ final class ResetTimeStyleTests: XCTestCase {
 
     func testSettingsKeysExistInAllLanguages() {
         for key in ["settings.resetTime", "settings.resetTime.countdown", "settings.resetTime.absolute", "settings.resetTime.footer", "time.tomorrowAt", "diagnostics.empty", "diagnostics.copy", "preview.small22"] {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) 缺 \(lang) 文案")
             }
         }
@@ -292,7 +292,7 @@ final class ResetTimeStyleTests: XCTestCase {
 
     func testNewWidgetAndPresetKeysExistInAllLanguages() {
         for key in ["widget.highestUsage", "widget.chooseAccount", "widget.accountType", "widget.overviewTitle", "widget.singleDescription", "widget.overviewDescription", "widget.providerType", "widget.gallery.single", "widget.gallery.singleDetail", "widget.gallery.medium", "widget.gallery.mediumDetail", "widget.gallery.large", "widget.gallery.largeDetail", "widget.metricType", "widget.quotaParam", "widget.homeSlot", "widget.followHome", "widget.emptySlot", "providers.preset.experimental", "providers.reorder", "providers.reorderDone", "card.reorderMetrics", "metricOrder.title", "time.compactMin", "custom.wizard.presetHint"] {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) 缺 \(lang) 文案")
             }
         }

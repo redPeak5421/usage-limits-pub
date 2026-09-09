@@ -256,7 +256,7 @@ final class CatalogTests: XCTestCase {
     func testOpenCodeIsOfficialTenthBuiltin() {
         XCTAssertEqual(ProviderID.opencode.displayName, "OpenCode")
         XCTAssertEqual(ProviderID.opencode.vendorName, "OpenCode")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             XCTAssertEqual(ProviderID.opencode.localizedVendor(lang), "OpenCode")
         }
         XCTAssertEqual(ProviderID.opencode.origin.host, "opencode.ai")
@@ -298,7 +298,7 @@ final class CatalogTests: XCTestCase {
         XCTAssertEqual(SnapshotStatus.error("用量数据异常").displayText(.en), "Usage data is invalid")
         XCTAssertNotEqual(SnapshotStatus.error("请求超时").displayText(.en), "请求超时")
         for key in ["diagnostics.empty", "diagnostics.emptyHint", "diagnostics.copy", "diagnostics.copied", "diagnostics.clear", "diagnostics.shareSubject"] {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) 缺 \(lang) 文案")
             }
         }

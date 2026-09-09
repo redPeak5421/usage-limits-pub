@@ -109,7 +109,7 @@ final class DashboardSideKeyTests: XCTestCase {
         XCTAssertEqual(DashboardSideKeyMenu.theme(selected: .helix).selectedIndex, 2)
         for key in ["sideKey.label", "sideKey.hint", "sideKey.menu.share", "sideKey.menu.theme",
                     "sideKey.menu.rootHint", "sideKey.menu.themeHint"] {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) 缺 \(lang) 文案")
             }
         }

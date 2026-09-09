@@ -30,7 +30,7 @@ final class FeedbackMailTests: XCTestCase {
         XCTAssertEqual(FeedbackMailDraft.subject(for: .zh), "Usage Limits 反馈：[请填一句概述]")
         XCTAssertTrue(FeedbackMailDraft.body(for: .zh).hasPrefix("来源：Usage Limits"))
         XCTAssertTrue(FeedbackMailDraft.body(for: .zh).hasSuffix("\n\n"), "正文末尾留空行给用户写")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             XCTAssertTrue(FeedbackMailDraft.subject(for: lang).contains("Usage Limits"), "主题须带 App 名 \(lang.rawValue)")
             XCTAssertTrue(FeedbackMailDraft.body(for: lang).contains("Usage Limits"), "正文须带来源 \(lang.rawValue)")
         }
@@ -58,7 +58,7 @@ final class FeedbackMailTests: XCTestCase {
             "feedback.mail.body",
         ]
         for key in keys {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) missing \(lang.rawValue)")
             }
         }

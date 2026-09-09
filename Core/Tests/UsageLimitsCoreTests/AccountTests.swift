@@ -141,7 +141,7 @@ final class AccountTests: XCTestCase {
             "custom.wizard.editTemplate",
         ]
         for key in keys {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 let value = L10n.tr(key, lang)
                 XCTAssertFalse(value.isEmpty, "\(key) \(lang) 缺文案")
                 XCTAssertNotEqual(value, key, "\(key) \(lang) 未翻译")
@@ -610,7 +610,7 @@ final class AccountTests: XCTestCase {
         XCTAssertEqual(L10n.tr("account.disable", .zh), "停用")
         XCTAssertEqual(L10n.tr("account.enable", .zh), "启用")
         XCTAssertEqual(L10n.tr("account.disabled", .zh), "已停用")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             for key in ["account.disable", "account.enable", "account.disabled"] {
                 XCTAssertNotEqual(L10n.tr(key, lang), key)
             }

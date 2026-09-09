@@ -226,7 +226,7 @@ final class ShareImageTests: XCTestCase {
         let usage = try XCTUnwrap(dict["NSPhotoLibraryAddUsageDescription"] as? String)
         XCTAssertFalse(usage.isEmpty)
         let appRoot = plist.deletingLastPathComponent()
-        for lang in ["zh", "en", "ja", "fr", "ru"] {
+        for lang in AppLanguage.concrete.map(\.rawValue) {
             let strings = try String(
                 contentsOf: appRoot.appendingPathComponent("\(lang).lproj/InfoPlist.strings"),
                 encoding: .utf8

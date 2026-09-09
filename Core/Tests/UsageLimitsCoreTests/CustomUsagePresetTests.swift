@@ -82,7 +82,7 @@ final class CustomUsagePresetTests: XCTestCase {
         XCTAssertEqual(ProviderID.zhipu.displayName, "智谱", "displayName 保持中文品牌回落")
         XCTAssertEqual(CustomFieldRole.timestamp.defaultLabel, "到期时间")
         XCTAssertEqual(CustomFieldRole.timestamp.defaultLabel(.en), "Expires")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             for key in [
                 "provider.name.zhipu", "provider.name.jimeng", "provider.name.minimax_global",
                 "provider.vendor.zhipu",

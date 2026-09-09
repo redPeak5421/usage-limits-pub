@@ -30,7 +30,7 @@ final class LoginConfirmTests: XCTestCase {
         XCTAssertTrue(source.contains("webOnlyReloads.removeValue(forKey: viewID)"), "程序重载只能放行一次，避免循环")
         XCTAssertFalse(source.contains("WKNavigationActionPolicy(rawValue:"), "不得使用私有的 allowWithoutTryingAppLink 枚举值")
         for key in ["login.webOnlyBlocked", "login.continueOnWeb"] {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] { XCTAssertNotEqual(L10n.tr(key, lang), key) }
+            for lang in AppLanguage.concrete { XCTAssertNotEqual(L10n.tr(key, lang), key) }
         }
     }
 
@@ -147,7 +147,7 @@ final class LoginConfirmTests: XCTestCase {
             "login.confirm.no",
         ]
         for key in keys {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 let value = L10n.tr(key, lang)
                 XCTAssertFalse(value.isEmpty, "\(key) \(lang) 缺文案")
                 XCTAssertNotEqual(value, key, "\(key) \(lang) 未翻译")
@@ -422,7 +422,7 @@ final class LoginConfirmTests: XCTestCase {
     }
 
     func testLoginBannerNoLongerClaimsGoogleIsUnavailable() {
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             let value = L10n.tr("login.banner", lang)
             XCTAssertFalse(value.isEmpty, "login.banner \(lang) 缺文案")
             XCTAssertNotEqual(value, "login.banner")

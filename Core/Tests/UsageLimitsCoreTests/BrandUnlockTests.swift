@@ -39,7 +39,7 @@ final class BrandUnlockTests: XCTestCase {
     }
 
     func testPrivacyCopyHasCookieAndWebKitHotspotsInEveryLanguage() {
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             let body = L10n.tr("settings.privacy.body", lang)
             XCTAssertTrue(containsHotspot(.cookie, in: body), "\(lang.rawValue) 正文需能点 Cookie")
             XCTAssertTrue(containsHotspot(.webkit, in: body), "\(lang.rawValue) 正文需能点 WebKit")
@@ -134,7 +134,7 @@ final class BrandUnlockTests: XCTestCase {
         XCTAssertFalse(hidden.visibleTexts.contains(L10n.tr("share.scanAppStore", .zh)))
         XCTAssertLessThan(ShareLayout.canvasHeight(of: hidden), ShareLayout.canvasHeight(of: shown))
         XCTAssertEqual(L10n.tr("settings.share.hideBrand", .zh), "隐藏分享二维码")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             XCTAssertNotEqual(L10n.tr("settings.share.hideBrand", lang), "settings.share.hideBrand")
         }
     }

@@ -12,7 +12,7 @@ final class SideKeyGuideTests: XCTestCase {
 
     /// 设置页「侧边键」说明：五语都有；步骤分行（一步一段，方便看清）；写的是系统里显示的快捷指令名。
     func testGuideCopyIsLocalizedAndSteppedWithLineBreaks() {
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             for key in ["settings.sideKey.guideTitle", "settings.sideKey.guideSteps", "settings.sideKey.open"] {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) missing \(lang.rawValue)")
             }

@@ -904,7 +904,7 @@ final class WidgetChromeTests: XCTestCase {
     func testEditorPlaceholderSlotsNeverBorrowAnotherInstanceTitles() throws {
         XCTAssertEqual(WidgetEditorPrefill.slotTitle(index: 0, language: .zh), "首页额度 1")
         XCTAssertEqual(WidgetEditorPrefill.slotTitle(index: 3, language: .en), "Home quota 4")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             XCTAssertNotEqual(WidgetEditorPrefill.slotTitle(index: 1, language: lang), "widget.homeSlot", "\(lang) 缺占位槽文案")
             XCTAssertTrue(WidgetEditorPrefill.slotTitle(index: 1, language: lang).contains("2"), "占位槽标题须带序号")
         }
@@ -1004,7 +1004,7 @@ final class WidgetChromeTests: XCTestCase {
             [follow, "five_hour"], "编辑页保留跟随行自身 id，系统才能按 id 删除；旧 id 不回填"
         )
         XCTAssertEqual(WidgetEditorPrefill.followHomeTitle(language: .zh), "跟随首页额度")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             XCTAssertNotEqual(WidgetEditorPrefill.followHomeTitle(language: lang), "widget.followHome", "\(lang) 缺跟随行文案")
         }
         let widget = try widgetSource()
@@ -1133,7 +1133,7 @@ final class WidgetChromeTests: XCTestCase {
         XCTAssertTrue(entity.contains("WidgetEditorPrefill.slotTitle"), "拿不到账号 / 「最高用量（自动）」退回「首页额度 N」")
         XCTAssertTrue(entity.contains("WidgetEditorPrefill.emptySlotTitle"), "该账号额度不够 N 条时多余槽位标「（空）」")
         XCTAssertEqual(WidgetEditorPrefill.emptySlotTitle(language: .zh), "（空）")
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             XCTAssertNotEqual(WidgetEditorPrefill.emptySlotTitle(language: lang), "widget.emptySlot", "\(lang) 缺空槽文案")
         }
         let defaults = widget.components(separatedBy: "enum MetricChoiceDefaults").dropFirst().first?

@@ -169,7 +169,7 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(L10n.tr(DashboardTheme.roulette.titleKey, .zh), "轮盘")
         XCTAssertEqual(L10n.tr(DashboardTheme.helix.titleKey, .zh), "螺旋")
         for key in ["settings.dashboardTheme", "settings.dashboardTheme.footer"] + DashboardTheme.allCases.map(\.titleKey) {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) 缺 \(lang) 文案")
             }
         }
@@ -488,7 +488,7 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(L10n.tr("settings.autoRefresh.unitSeconds", .zh), "秒")
         XCTAssertTrue(L10n.tr("settings.autoRefresh.footer", .zh).contains("60 分钟"))
         XCTAssertTrue(L10n.tr("settings.autoRefresh.footer", .zh).contains("打开"))
-        for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for lang in AppLanguage.concrete {
             XCTAssertNotEqual(L10n.tr("settings.autoRefresh.unitSeconds", lang), "settings.autoRefresh.unitSeconds")
         }
     }
@@ -522,44 +522,44 @@ final class StoreTests: XCTestCase {
         XCTAssertTrue(appearance.contains("edition.appearanceSection()"), "卡片效果开关节走 Edition 扩展点")
 
         for key in ["settings.appearance", "settings.refreshGroup", "settings.advanced"] {
-            for lang in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            for lang in AppLanguage.concrete {
                 XCTAssertNotEqual(L10n.tr(key, lang), key, "\(key) 缺 \(lang) 文案")
             }
         }
     }
 
-    func testDashboardAccessibilityCopyMatchesExactFiveLanguageMatrix() {
+    func testDashboardAccessibilityCopyMatchesExactSixLanguageMatrix() {
         let expected: [String: [AppLanguage: String]] = [
             "dashboard.action.expand": [
-                .zh: "展开当前账号", .en: "Expand account", .ja: "アカウントを展開",
+                .zh: "展开当前账号", .zhHant: "展開目前帳號", .en: "Expand account", .ja: "アカウントを展開",
                 .fr: "Développer le compte", .ru: "Развернуть аккаунт",
             ],
             "dashboard.action.collapse": [
-                .zh: "收起当前账号", .en: "Collapse account", .ja: "アカウントを閉じる",
+                .zh: "收起当前账号", .zhHant: "收合目前帳號", .en: "Collapse account", .ja: "アカウントを閉じる",
                 .fr: "Réduire le compte", .ru: "Свернуть аккаунт",
             ],
             "dashboard.action.moveEarlier": [
-                .zh: "向前移动", .en: "Move earlier", .ja: "前へ移動",
+                .zh: "向前移动", .zhHant: "向前移動", .en: "Move earlier", .ja: "前へ移動",
                 .fr: "Déplacer avant", .ru: "Переместить раньше",
             ],
             "dashboard.action.moveLater": [
-                .zh: "向后移动", .en: "Move later", .ja: "後ろへ移動",
+                .zh: "向后移动", .zhHant: "向後移動", .en: "Move later", .ja: "後ろへ移動",
                 .fr: "Déplacer après", .ru: "Переместить позже",
             ],
             "dashboard.action.refreshAll": [
-                .zh: "刷新全部账号", .en: "Refresh all accounts", .ja: "すべて更新",
+                .zh: "刷新全部账号", .zhHant: "重新整理所有帳號", .en: "Refresh all accounts", .ja: "すべて更新",
                 .fr: "Tout actualiser", .ru: "Обновить все аккаунты",
             ],
             "dashboard.action.resetHelix": [
-                .zh: "螺旋竖直", .en: "Straighten helix", .ja: "らせんを垂直に",
+                .zh: "螺旋竖直", .zhHant: "螺旋豎直", .en: "Straighten helix", .ja: "らせんを垂直に",
                 .fr: "Redresser l’hélice", .ru: "Выпрямить спираль",
             ],
             "dashboard.position": [
-                .zh: "%d / %d", .en: "%d of %d", .ja: "%d / %d",
+                .zh: "%d / %d", .zhHant: "%d / %d", .en: "%d of %d", .ja: "%d / %d",
                 .fr: "%d sur %d", .ru: "%d из %d",
             ],
             "dashboard.status.available": [
-                .zh: "可用", .en: "Available", .ja: "利用可能",
+                .zh: "可用", .zhHant: "可用", .en: "Available", .ja: "利用可能",
                 .fr: "Disponible", .ru: "Доступно",
             ],
         ]
@@ -567,17 +567,17 @@ final class StoreTests: XCTestCase {
 
 
         for (key, translations) in expected {
-            XCTAssertEqual(translations.count, 5, "\(key) must define exactly five concrete languages")
-            for language in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+            XCTAssertEqual(translations.count, AppLanguage.concrete.count, "\(key) 必须覆盖全部具体语言")
+            for language in AppLanguage.concrete {
                 XCTAssertEqual(L10n.tr(key, language), translations[language], "\(key) \(language)")
             }
         }
 
         let formatted: [AppLanguage: String] = [
-            .zh: "3 / 11", .en: "3 of 11", .ja: "3 / 11",
+            .zh: "3 / 11", .zhHant: "3 / 11", .en: "3 of 11", .ja: "3 / 11",
             .fr: "3 sur 11", .ru: "3 из 11",
         ]
-        for language in [AppLanguage.zh, .en, .ja, .fr, .ru] {
+        for language in AppLanguage.concrete {
             XCTAssertEqual(
                 L10n.tr("dashboard.position", language, 3, 11),
                 formatted[language],
