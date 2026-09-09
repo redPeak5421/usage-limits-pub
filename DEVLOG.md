@@ -221,4 +221,4 @@
 
 - 保留用户确认的 11 家接入；其余 14 家官方公开资料不足以验证当前 App 同源接口与鉴权，暂时隐藏。逐家依据见 `providers/availability.md`，不宣称官网没有用量功能。
 - 独立 `ProviderAvailability` 门禁覆盖添加目录、账号设置、首页、提醒设置、预览、小组件和手表，以及前后台自动刷新。ProviderID、账号、Cookie、开关、缓存均保留；可见列表拖动保留隐藏账号原位置，自定义账号不受影响。
-- Core 1161 项、Pro 26 项全绿；包含 LoginConfirmTests、隐藏账号不展示/探针、可见拖动保留隐藏记录、自定义账号和预览门禁。XcodeGen 与 UsageLimits 模拟器 App scheme 编译通过。新供应商真实登录、真机 Widget / Watch 与后台刷新仍需设备验证。发布结果记 Pro/DEVLOG。
+- Core 1161 项全绿；包含 LoginConfirmTests、隐藏账号不展示/探针、可见拖动保留隐藏记录、自定义账号和预览门禁。XcodeGen 与 UsageLimits 模拟器 App scheme 编译通过。新供应商真实登录、真机 Widget / Watch 与后台刷新仍需设备验证。
