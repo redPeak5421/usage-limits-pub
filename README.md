@@ -14,7 +14,9 @@ iOS 用量看板。在 App 里登录各家 AI 官方站点，把订阅和预充�
 
 ## 支持的服务
 
-Claude、ChatGPT、Grok、Cursor、DeepSeek、智谱、Kimi、MiniMax、MiniMax 国际、即梦、OpenCode、LongCat、MiMo、Qoder、Perplexity、Augment、Abacus AI、T3 Chat、Notion AI、Ollama、StepFun、Copilot、Gemini、Antigravity、Kiro。
+当前开放 11 家：Claude、ChatGPT（Codex）、Grok、Cursor、DeepSeek、智谱、Kimi、MiniMax 国内、即梦、OpenCode、Gemini。
+
+其余 14 家接入暂时隐藏，代码和已保存账号仍保留，待验证后恢复。核验依据见 [供应商接入状态](providers/availability.md)。
 
 也可以添加**自定义用量源**：填写任意 HTTPS JSON 接口，或选用内置模板。
 
