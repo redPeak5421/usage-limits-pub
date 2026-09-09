@@ -2,6 +2,8 @@
 
 每个供应商一份目录文件：官网 Usage 页地址、已解析与备用的用量 API、鉴权方式、官方套餐标价表。
 
+发布目录当前开放 11 家，14 家保留实现但隐藏；逐家证据与恢复条件见 [接入可见性核验](availability.md)。ProviderID 仍为 25 个，隐藏不删除账号和快照。
+
 **定位**：这是探针的**备份与校准源**。接口漂移时的维护顺序：
 
 1. 先在真机/模拟器上确认新形状（诊断页「探针诊断日志」可看到每个探针的 HTTP 状态与响应长度）；
@@ -31,7 +33,7 @@ iPad 上各家的实际响应形状以真机验证为准；发现漂移按本文
 
 **数值约定**（所有供应商一致）：JSON 布尔不是 0/1 用量；`NaN` / `Infinity` / 溢出指数字符串与任何非有限数直接丢弃。所有 Double→Int 先做 finite / 范围检查，日期只接受 1970–9999。快照落盘前递归验证百分比、金额、余额/总额、breakdown / history 和日期；无效快照拒绝落盘并记诊断，不覆盖上一份有效快照。
 
-**探针响应上限**（所有原生供应商一致）：文本响应最多 **1 MB**（`__PROBE_TEXT_LIMIT_BYTES`，超过按 UTF-8 字节截断；Gemini quota 单次超过 200 KB，旧上限 200 KB 会截成坏 JSON），二进制响应最多 150,000 原始字节（base64 后 200,000）。
+**探针响应上限**（所有原生供应商一致）：文本响应最多 **1 MB**（`__PROBE_TEXT_LIMIT_BYTES`，超过按 UTF-8 字节截断），二进制响应最多 150,000 原始字节（base64 后 200,000）。Gemini 的大响应是会话引导 HTML；实际 GetUsageInfo 配额 RPC 很小，不能把 HTML 解析失败归因为配额 JSON 截断。
 
 **探针时间预算**（所有原生供应商一致）：一轮脚本从启动起共享 **27 秒 deadline**，给 `callAsyncJavaScript` 的 30 秒外层留至少 3 秒编码与回桥余量。普通子请求默认单次 12 秒；显式短预算仍以各供应商文件为准。每次实际 timeout 都夹到本轮剩余时间，deadline 耗尽后不再发新请求并返回 `status: -3`。网络错误 / 408 / 502 / 503 / 504 默认只重试一次，300ms backoff 也计入共享预算；剩余时间不足时跳过重试。整个 `fetch` + body 消费无条件走同一 deadline race：即使 `AbortController` 存在但底层忽略 signal、`text()` / `arrayBuffer()` / stream reader 永不完成，也会按预算返回。响应优先逐块读取 `ReadableStream`：文本最多 **200,000 个 UTF-8 字节**，二进制最多 **150,000 个原始字节**（base64 后不超过 200,000 字节），到上限立即 cancel；无 stream 时按同一字节上限截断，可信 `Content-Length` 已超限则不读取 body、2xx 返回 `status: -2`。`finalURL` 只保留 origin + pathname，响应头仅白名单透传 `grpc-status` / `grpc-message` / `x-vercel-mitigated`。因此可选探针挂住时，已经完成的核心结果仍会在 30 秒前返回。
 
@@ -63,7 +65,7 @@ iPad 上各家的实际响应形状以真机验证为准；发现漂移按本文
 | Ollama Cloud | [ollama.md](ollama.md) | https://ollama.com/settings |
 | StepFun | [stepfun.md](stepfun.md) | https://platform.stepfun.com/plan-usage |
 | Copilot | [copilot.md](copilot.md) | https://github.com/settings/copilot |
-| Gemini | [gemini.md](gemini.md) | https://gemini.google.com/app |
+| Gemini | [gemini.md](gemini.md) | https://gemini.google.com/usage |
 | Antigravity | [antigravity.md](antigravity.md) | https://antigravity.google/ |
 | Kiro | [kiro.md](kiro.md) | https://app.kiro.dev/ |
 | 自定义 | [custom.md](custom.md) | 用户自填 HTTPS URL，或选 5 个 Bearer 预设（Kimi API 国际/中国、Crof 实验性、Poe、OpenRouter Key）；字段勾选 + 自定义展示名；无图标时才从 origin 首页解析 favicon |

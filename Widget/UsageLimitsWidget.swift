@@ -113,7 +113,7 @@ struct AccountChoiceQuery: EntityQuery, EntityStringQuery {
                 )
             }
         }
-        return [HighestUsageChoice.entity] + ProviderID.allCases.map {
+        return [HighestUsageChoice.entity] + ProviderAvailability.providers.map {
             AccountChoiceEntity(
                 id: "provider.\($0.rawValue)",
                 title: $0.localizedName(store.appLanguage),
@@ -478,7 +478,7 @@ enum SingleEntryFactory {
             )
         }
         if let acc = store.accounts.first(where: {
-            preview || AccountVisibility.shouldShowOnHome($0, providerEnabled: store.isProviderEnabled(for: $0))
+            ProviderAvailability.isAvailable($0) && (preview || AccountVisibility.shouldShowOnHome($0, providerEnabled: store.isProviderEnabled(for: $0)))
         }) {
             return entry(for: acc, date: date, preview: preview, store: store)
         }
@@ -495,7 +495,7 @@ enum SingleEntryFactory {
             } ?? visible[0]
             return entry(for: picked, date: date, preview: preview, store: store)
         }
-        let providers = store.providerOrder.filter { preview || store.isEnabled($0) }
+        let providers = store.providerOrder.filter { ProviderAvailability.isAvailable($0) && (preview || store.isEnabled($0)) }
         let picked = HighestUsagePicker.pick(providers) { provider -> ProviderSnapshot? in
             fallbackEntry(provider: provider, date: date, preview: preview, store: store).snapshot
         } ?? providers.first ?? .claude
@@ -541,7 +541,7 @@ enum SingleEntryFactory {
     private static func fallbackEntry(
         provider: ProviderID, date: Date, preview: Bool, store: SharedStore
     ) -> SingleEntry {
-        let disabled = !preview && !store.isEnabled(provider)
+        let disabled = !ProviderAvailability.isAvailable(provider) || (!preview && !store.isEnabled(provider))
         var snap = store.displaySnapshot(for: provider, now: date)
         if snap == nil, preview {
             snap = SharedStore.demoSnapshots(now: date).first { $0.provider == provider }

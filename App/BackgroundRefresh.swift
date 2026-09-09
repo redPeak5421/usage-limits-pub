@@ -46,10 +46,12 @@ enum BackgroundRefresh {
             var allOK = true
             let includeCustom = settings.prepaidScope == .unified && settings.prepaidAmountEnabled
             let primaryItems = store.enabledProviders.compactMap { provider -> (id: ProviderID, fetchedAt: Date)? in
+                guard ProviderAvailability.isAvailable(provider) else { return nil }
                 guard let old = store.snapshot(for: provider), old.status.isOK else { return nil }
                 return (provider, old.fetchedAt)
             }
             let extraItems = store.accounts.compactMap { account -> (id: UUID, fetchedAt: Date)? in
+                guard ProviderAvailability.isAvailable(account) else { return nil }
                 guard !account.isCustom, !account.isPrimary, account.isEnabled else { return nil }
                 guard let provider = account.provider, store.isEnabled(provider) else { return nil }
                 guard let old = store.accountSnapshot(for: account.id), old.status.isOK else { return nil }

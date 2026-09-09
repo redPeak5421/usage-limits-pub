@@ -49,6 +49,7 @@ public enum RefreshPolicy {
             return true
         }
         guard let old, old.status.isOK else { return true }
+        if new.provider == .gemini, case .error = new.status { return false }
         if new.provider == .grok,
            new.status == .error(GrokParser.browserVerificationError),
            GrokParser.requiresBrowserVerification(results) { return false }

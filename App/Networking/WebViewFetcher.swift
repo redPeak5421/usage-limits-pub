@@ -189,7 +189,10 @@ final class WebViewFetcher: NSObject {
         }
         let script = ProviderScripts.script(for: provider)
         do {
-            let arguments = await probeArguments(for: target)
+            var arguments = await probeArguments(for: target)
+            if provider == .gemini {
+                arguments["geminiUseCurrentAccount"] = existingWebView != nil
+            }
             let value = try await withTimeout(seconds: 30) { @MainActor in
                 try await wv.callAsyncJavaScript(script, arguments: arguments, in: nil, contentWorld: .defaultClient)
             }

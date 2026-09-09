@@ -20,7 +20,7 @@ struct ProvidersSettingsView: View {
 
     /// 展示顺序即账号存储顺序；不按服务商重新聚组，所以可以穿插不同服务商。
     private var orderedAccounts: [ProviderAccount] {
-        state.accounts
+        state.visibleAccounts
     }
 
     var body: some View {
@@ -48,7 +48,7 @@ struct ProvidersSettingsView: View {
                     }
                     .onMove { from, to in
                         state.applyAccountOrder(
-                            AccountOrder.moving(state.accounts, fromOffsets: from, toOffset: to)
+                            ProviderAvailability.movingVisibleAccounts(state.accounts, fromOffsets: from, toOffset: to)
                         )
                     }
                 }

@@ -43,7 +43,7 @@ public enum ProviderProbeScript {
     }
     const __PROBE_DEFAULT_TIMEOUT_MS = 12000;
     const __PROBE_DEADLINE_AT = Date.now() + 27000;
-    // 1 MB：Gemini quota 单次超过 200 KB，被截断后 JSON 解析失败（真机「配额数据异常」）
+    // 文本响应最多保留 1 MB；HTML 不是配额 JSON，扩大上限不能解决接口未接入。
     const __PROBE_TEXT_LIMIT_BYTES = 1000000;
     // 150,000 raw bytes encode to exactly 200,000 base64 bytes.
     const __PROBE_BINARY_LIMIT_BYTES = 150000;

@@ -57,7 +57,7 @@ final class WatchStore: NSObject, ObservableObject, @unchecked Sendable {
 
     /// 圆环页展示的服务商（按全局顺序，只含启用的，与 iPhone 首页一致）。
     var activeProviders: [ProviderID] {
-        order.filter { enabled.contains($0) }
+        order.filter { ProviderAvailability.isAvailable($0) && enabled.contains($0) }
     }
 
     func snapshot(for provider: ProviderID) -> ProviderSnapshot? {
@@ -79,8 +79,10 @@ final class WatchStore: NSObject, ObservableObject, @unchecked Sendable {
 
     /// 设置页长按拖动排序：改的是与 iPhone 共用的同一份全局顺序，回传后两端联动。
     func moveOrder(fromOffsets: IndexSet, toOffset: Int) {
-        var next = order
-        next.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        var visible = order.filter(ProviderAvailability.isAvailable)
+        visible.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        var iterator = visible.makeIterator()
+        let next = order.map { ProviderAvailability.isAvailable($0) ? iterator.next()! : $0 }
         order = next
         cache.providerOrder = next
         sendToPhone(["setOrder": next.map(\.rawValue)])

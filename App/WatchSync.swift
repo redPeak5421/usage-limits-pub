@@ -41,7 +41,7 @@ final class WatchSync: NSObject, @unchecked Sendable {
         encoder.dateEncodingStrategy = .iso8601
         var context: [String: Any] = [
             "enabled": Dictionary(uniqueKeysWithValues: ProviderID.allCases.map {
-                ($0.rawValue, store.isEnabled($0))
+                ($0.rawValue, ProviderAvailability.isAvailable($0) && store.isEnabled($0))
             }),
             "order": store.providerOrder.map(\.rawValue),
             "language": store.appLanguage.rawValue,

@@ -375,7 +375,7 @@ struct WatchSettingsView: View {
     var body: some View {
         List {
             Section {
-                ForEach(store.order) { provider in
+                ForEach(store.order.filter(ProviderAvailability.isAvailable)) { provider in
                     Toggle(isOn: Binding(
                         get: { store.enabled.contains(provider) },
                         set: { store.setEnabled($0, for: provider) }

@@ -2483,6 +2483,13 @@ public enum L10n {
             .zh: "配额数据异常", .en: "Quota data is invalid", .ja: "クォータデータが不正です",
             .fr: "Données de quota invalides", .ru: "Некорректные данные квоты",
         ],
+        "Gemini 未返回用量数据，请在官网确认账号与用量页": [
+            .zh: "Gemini 未返回用量数据，请在官网确认账号与用量页",
+            .en: "Gemini returned no usage data. Check your account and usage page on the website.",
+            .ja: "Gemini の使用量データがありません。公式サイトでアカウントと使用量ページを確認してください。",
+            .fr: "Gemini n’a renvoyé aucune donnée d’utilisation. Vérifiez votre compte et la page d’utilisation sur le site.",
+            .ru: "Gemini не вернул данные об использовании. Проверьте аккаунт и страницу использования на сайте.",
+        ],
         "音乐生成": [
             .zh: "音乐生成", .en: "Music generation", .ja: "音楽生成",
             .fr: "Génération musicale", .ru: "Генерация музыки",

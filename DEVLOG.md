@@ -200,3 +200,25 @@
 | 127 | 审查 1.4.574 | 首页平铺在多列 / 单列之间切换时，阅读位置回到第一张卡 | `LazyVGrid` 与 `LazyVStack` 是两个容器，size class 翻转时整段内容重建，`ScrollView` 偏移归零。偏移量本身没法沿用——两列的 y 和单列的 y 不是一回事 | 新增 Core `DashboardScrollAnchor`：每张卡只上报自己相对视口顶边的三段位置（`onGeometryChange` 只在取值变化时回调，不逐像素写状态），压住顶边的那张就是锚点；首张卡回到顶边下方时清空锚点，免得把横幅顶出视口。`usesMultiColumn` 一变就滚回锚点，滚两次（懒容器要滚过去才建出沿途的卡，展开的卡一变高第一次会短一截）。展开状态仍由 `expandedIDs` 保管，不新开状态源 | 新增 `DashboardScrollAnchorTests` 12 项。iPad Air 11 M4 实测：修复前两列滚到 LongCat / MiMo 那行缩窄窗口直接弹回 Claude；修复后停在 DeepSeek 那张（锚点卡）|
 | 128 | 审查 1.4.574 | `safeContentFrame` 的注释说 iPad 上「也照样拿 390×844」，与即梦接管页的实际行为不符 | 注释只描述了构造时的初始 frame。可见登录页是 `UIViewRepresentable`，上屏即被 SwiftUI 按 sheet 尺寸重排；即梦接管页的 frame 被改成 key window bounds 并挂 autoresize，跟着 iPad 窗口缩放 | 注释改成分三类写（离屏探针固定 390×844 / 可见登录页由 SwiftUI 分配 / 即梦跟随窗口）；`SafariUserAgent` 去掉「所有页面和接口必然移动版」的说法；`providers/README.md` 补「视口与 UA」表，`providers/jimeng.md` 记下 iPad 上的实测与待验证项。不改 UA、不改回隐藏小窗、不加 URLSession 官方站请求 | 模拟器未登录打开即梦 `/ai-tool/home`（iPad Air 11 全屏竖屏，视口 820pt）拿到的是桌面版布局；桌面版 SSR 是否照写 `__isLogined` / `webSignBody` **待真机真实账号验证**，不得据此断言即梦在 iPad 上可用或不可用。ChatGPT 登录页在全屏竖 / 横屏 / 窄窗三种形态渲染正常、三个社交按钮齐全，真实登录同样待验证 |
 | 129 | iPad 整合 1.5.583 | iPad 分支与 master 的分享预览、版本、开发日志发生冲突 | 分支仍使用旧位图预览，master 已改为实时画布并修复连续切换时的滚动补偿 | 保留 master 实时画布、资源复用与 SharePreviewTransition，加入 iPad page sheet、可读栏宽与系统分享 popover；保留两边日志并重排编号。版本累计 1.5.576 + 7 = 1.5.583，不创建 commit | Core 1145 项全绿（含 LoginConfirmTests）；xcodegen、iPad Debug 与 iPhone Release scheme 构建通过；模拟器横竖屏、分享面板重复打开、设置及小组件预览检查通过。真机登录、即梦抓取、窗口缩放等未验项详见 docs/plans/2026-09-08-ipad-master-integration.md |
+
+### 2026-09-09 · 1.5.584 · Gemini HTML 错误归因
+
+- 用户日志：`gemini.quota` 连续 HTTP 200、约 850 KB，解析为「配额数据异常」。现有探针请求 `/app` 网页，占位接入没有已验证的 Cookie 配额 API；字节数不能证明发生了 JSON 截断。
+- 修复：识别 HTML 开头，明确提示网页用量暂未接入、重新登录不能解决；保持错误状态且不确认登录、不编造额度。该错误不覆盖 last-good；401/403 和其他 HTTP 错误仍按原规则处理。五种语言文案齐全，接口目录同步。
+- 回归：合成 HTML 夹具、BOM / 空白 / 大小写、HTTP 错误优先、损坏 JSON、登录判定与 last-good；修复前 4 处断言失败，修复后 Core 1149 项全绿（含 LoginConfirmTests）。
+- 边界：本轮修复错误提示与缓存保护，未接通真实 Gemini 网页 usage。真机 Google 登录、Cookie / CORS 与真实配额响应尚未验证；需先验证官网同源端点，禁止用桌面 OAuth / CLI 配额替代网页用量。
+- 工程验证：`xcodegen generate` 成功；UsageLimits scheme 在 iPhone 17 / iOS 26.5 Simulator destination 构建成功，未做真实账号设备验证。
+
+### 2026-09-09 · 1.5.585 · Gemini 官网 GetUsageInfo 接入
+
+- 用户提供 `/u/3/usage`，通过 Chrome DevTools 导出网络样本，定位 `POST /u/<index>/_/BardChatUi/data/batchexecute?rpcids=jSf9Qc`；官方前端将其标为 `BardFrontendService.GetUsageInfo`。前端 `Chm` 证实窗口类型 1/2、已用比例字段与秒/纳秒重置时间；不是旧 remainingFraction 桶，也不能用内部容量值计算百分比。
+- 探针从同源 usage 引导页的具名 WIZ JSON 取 CSRF / session 参数，再 POST RPC；不依赖 defaultClient 不可见的页面全局。可见页优先当前 Google 账号路径，离屏读取同 dataStore 的已成功路径；账号 ID 仅在源内哈希，沿用 AccountIdentity 防串号。HTML、RPC 无有效数据不覆盖 last-good，真实 401/403 保持原语义。
+- Chrome 验证：原始参数重放与重新 fetch 引导 HTML 两种方式均 HTTP 200，返回当前 5 小时 / 每周 0%，与官网一致。捕获样本只保留脱敏配额夹具；CSRF、完整 HAR / HTML 未进仓库。
+- 测试：新 RPC 回归在旧实现上 13 处断言失败；新增生产 JS 执行、多账号路由、失败不缓存、身份脱敏、无效字段与百分比口径测试。Core 1157 项通过（含 LoginConfirmTests），xcodegen 与 UsageLimits scheme 编译通过。
+- 模拟器闭环：iPhone 17 Pro / iOS 26.5 安装 1.5.585，复用已有 WebKit Cookie；10:44:35Z 可见页检测得到 `ok` 两条指标，点击保留的登录确认后 10:45:24Z 落盘。18:46:23 冷启动 App，10:47:16Z 离屏刷新再次 `ok`，226 字节，Google AI Pro / five_hour 0% / weekly 0%，重置时间已持久化。物理真机、新账号 Google OAuth 全流程未跑。
+- 未创建 commit；base/pub 同步脚本要求已提交且干净的 master 并自动提交快照，因此本轮未运行同步。
+# 2026-09-09 · 1.5.586 · 接入目录核验
+
+- 保留用户确认的 11 家接入；其余 14 家官方公开资料不足以验证当前 App 同源接口与鉴权，暂时隐藏。逐家依据见 `providers/availability.md`，不宣称官网没有用量功能。
+- 独立 `ProviderAvailability` 门禁覆盖添加目录、账号设置、首页、提醒设置、预览、小组件和手表，以及前后台自动刷新。ProviderID、账号、Cookie、开关、缓存均保留；可见列表拖动保留隐藏账号原位置，自定义账号不受影响。
+- Core 1161 项、Pro 26 项全绿；包含 LoginConfirmTests、隐藏账号不展示/探针、可见拖动保留隐藏记录、自定义账号和预览门禁。XcodeGen 与 UsageLimits 模拟器 App scheme 编译通过。新供应商真实登录、真机 Widget / Watch 与后台刷新仍需设备验证。发布结果记 Pro/DEVLOG。

@@ -3,7 +3,7 @@ import Foundation
 /// 加号页目录排序：拉丁名 A–Z 在前，中文按拼音排在后。
 public enum ProviderCatalog {
     public static func sortedProviders(_ language: AppLanguage) -> [ProviderID] {
-        ProviderID.allCases.sorted { lhs, rhs in
+        ProviderAvailability.providers.sorted { lhs, rhs in
             compare(lhs.localizedName(language), rhs.localizedName(language), language: language)
         }
     }

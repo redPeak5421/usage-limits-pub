@@ -277,7 +277,6 @@ final class WidgetChromeTests: XCTestCase {
         XCTAssertEqual(rows.map(\.title), [
             ProviderID.zhipu.localizedName(.en),
             ProviderID.jimeng.localizedName(.en),
-            ProviderID.minimaxGlobal.localizedName(.en),
         ])
         XCTAssertNotEqual(rows.map(\.title), rows.map { $0.provider.displayName })
     }

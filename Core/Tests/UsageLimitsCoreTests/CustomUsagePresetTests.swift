@@ -114,12 +114,12 @@ final class CustomUsagePresetTests: XCTestCase {
 
     func testCatalogSortsProvidersAndPresetsByLocalizedName() {
         let zh = ProviderCatalog.sortedProviders(.zh)
-        XCTAssertEqual(Set(zh), Set(ProviderID.allCases))
+        XCTAssertEqual(Set(zh), Set(ProviderAvailability.providers))
         let zhNames = zh.map { $0.localizedName(.zh) }
         let latin = zhNames.filter { !ProviderCatalog.startsWithCJK($0) }
         let cjk = zhNames.filter { ProviderCatalog.startsWithCJK($0) }
         XCTAssertEqual(zhNames, latin + cjk, "拉丁名在前，中文在后")
-        XCTAssertEqual(zh.first?.localizedName(.zh), "Abacus AI")
+        XCTAssertEqual(zh.first?.localizedName(.zh), "ChatGPT")
         XCTAssertEqual(cjk, ["即梦", "智谱"], "中文按拼音：即梦 ji、智谱 zhi")
         XCTAssertFalse(ProviderCatalog.startsWithCJK("Kimi"))
         XCTAssertFalse(ProviderCatalog.startsWithCJK("MiniMax 国际"))

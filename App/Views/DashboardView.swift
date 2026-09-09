@@ -60,7 +60,7 @@ struct DashboardView: View {
                     DashboardFlatView(
                         items: items,
                         showsDemoBanner: state.demoMode,
-                        showsEmptyHint: state.accounts.isEmpty && !state.demoMode,
+                        showsEmptyHint: state.visibleAccounts.isEmpty && !state.demoMode,
                         expandedIDs: $flatExpandedIDs,
                         revealTarget: $flatRevealTarget,
                         onRefreshAll: { await state.refreshAll() },
@@ -249,7 +249,7 @@ struct DashboardView: View {
         items.reserveCapacity(state.accounts.count + state.providerOrder.count)
         var seenPrimaryProviders = Set<ProviderID>()
 
-        for account in state.accounts {
+        for account in state.visibleAccounts {
             switch account.source {
             case .builtin(let provider):
                 if account.isPrimary {
@@ -360,7 +360,7 @@ struct DashboardView: View {
         }
 
         if state.demoMode {
-            for provider in state.providerOrder where !seenPrimaryProviders.contains(provider) {
+            for provider in state.availableProviders where !seenPrimaryProviders.contains(provider) {
                 let snapshot = state.snapshot(provider)
                 let title = provider.localizedName(lang)
                 items.append(DashboardSceneItem(

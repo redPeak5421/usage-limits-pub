@@ -98,6 +98,7 @@ public enum WidgetAccountItems {
         language: AppLanguage = .system
     ) -> [WidgetAccountItem] {
         let fromAccounts: [WidgetAccountItem] = accounts.compactMap { account in
+            guard ProviderAvailability.isAvailable(account) else { return nil }
             switch account.source {
             case .builtin(let provider):
                 if !preview {
@@ -135,6 +136,7 @@ public enum WidgetAccountItems {
 
         let order = providerOrder.isEmpty ? ProviderID.allCases : providerOrder
         let fallback: [WidgetAccountItem] = order.compactMap { provider in
+            guard ProviderAvailability.isAvailable(provider) else { return nil }
             if !preview && !isProviderEnabled(provider) { return nil }
             return WidgetAccountItem(
                 id: "provider.\(provider.rawValue)",
@@ -408,4 +410,3 @@ public enum WidgetEditorPrefill {
         id.hasPrefix(headerPrefix)
     }
 }
-

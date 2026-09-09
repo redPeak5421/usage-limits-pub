@@ -192,7 +192,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .ollama: return URL(string: "https://ollama.com/signin")!
         case .stepfun: return URL(string: "https://platform.stepfun.com/plan-usage")!
         case .copilot: return URL(string: "https://github.com/login")!
-        case .gemini: return URL(string: "https://gemini.google.com/app")!
+        case .gemini: return URL(string: "https://gemini.google.com/usage")!
         case .antigravity: return URL(string: "https://antigravity.google/")!
         case .kiro: return URL(string: "https://app.kiro.dev/")!
         case .minimaxGlobal: return URL(string: "https://platform.minimax.io/console/usage")!
@@ -223,7 +223,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .ollama: return URL(string: "https://ollama.com/settings")!
         case .stepfun: return URL(string: "https://platform.stepfun.com/plan-usage")!
         case .copilot: return URL(string: "https://github.com/settings/copilot")!
-        case .gemini: return URL(string: "https://gemini.google.com/app")!
+        case .gemini: return URL(string: "https://gemini.google.com/usage")!
         case .antigravity: return URL(string: "https://antigravity.google/")!
         case .kiro: return URL(string: "https://app.kiro.dev/")!
         case .minimaxGlobal: return URL(string: "https://platform.minimax.io/console/usage")!

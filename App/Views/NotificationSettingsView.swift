@@ -9,7 +9,7 @@ struct NotificationSettingsView: View {
     @State private var thresholdDraft: Double = 80
     @State private var prepaidDraft: Double = 10
 
-    private var providers: [ProviderID] { state.providerOrder }
+    private var providers: [ProviderID] { state.availableProviders }
 
     var body: some View {
         Form {

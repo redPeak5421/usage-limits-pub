@@ -325,8 +325,11 @@ final class AppState: ObservableObject {
 
     /// 首页与刷新循环实际参与的服务商（按全局自定义顺序）。
     var activeProviders: [ProviderID] {
-        providerOrder.filter { enabledProviders.contains($0) }
+        providerOrder.filter { ProviderAvailability.isAvailable($0) && enabledProviders.contains($0) }
     }
+
+    var visibleAccounts: [ProviderAccount] { accounts.filter(ProviderAvailability.isAvailable) }
+    var availableProviders: [ProviderID] { providerOrder.filter(ProviderAvailability.isAvailable) }
 
 
     /// 手表端拖动排序回传：缺失的服务商补到末尾后走同一条应用路径。
@@ -462,7 +465,7 @@ final class AppState: ObservableObject {
 
     /// 首页是否显示该服务商的主卡：演示模式未添加的仍橱窗展示；已添加则尊重停用。
     func showsPrimaryCard(_ provider: ProviderID?) -> Bool {
-        guard let provider else { return false }
+        guard let provider, ProviderAvailability.isAvailable(provider) else { return false }
         if let primary = primaryAccount(provider) {
             return AccountVisibility.shouldShowOnHome(
                 primary, providerEnabled: enabledProviders.contains(provider)

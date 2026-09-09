@@ -823,7 +823,7 @@ final class DashboardSceneSourceTests: XCTestCase {
             to: "private func displayedShareItems(from items: [DashboardSceneItem])"
         )
         XCTAssertEqual(
-            scene.components(separatedBy: "for account in state.accounts").count - 1,
+            scene.components(separatedBy: "for account in state.visibleAccounts").count - 1,
             1,
             "visible scene order must come from one direct account traversal"
         )
