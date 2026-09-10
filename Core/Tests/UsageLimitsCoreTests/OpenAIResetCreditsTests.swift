@@ -130,6 +130,10 @@ final class OpenAIResetCreditsTests: XCTestCase {
         XCTAssertTrue(source.contains("ForEach(Array(dates.enumerated()), id: \\.offset)"))
         XCTAssertTrue(source.contains(".environment(\\.isScrollEnabled, dates.count > Self.visibleSlots)"))
         XCTAssertTrue(source.contains("Color.clear.dashboardSceneControlRegion()"))
+        XCTAssertFalse(source.contains("summary.usedCount"))
+        XCTAssertFalse(source.contains("summary.usedDates"))
+        XCTAssertFalse(source.contains("openai.reset.title"))
+        XCTAssertFalse(source.contains("RoundedRectangle"))
     }
 
     func testInvalidListDateCannotPersist() {
