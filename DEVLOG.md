@@ -274,3 +274,16 @@
 - 三种主题的缩略卡均隐藏可用重置，展开卡保留次数和三行内部滚动列表。平铺缩略卡先测自然高度，再统一补足到公共高度；展开卡不参与测量，字号或列布局变化重新测量，避免共享高度反馈累加。
 - Core 1189 项全绿，覆盖明细开关、账号独立计数、零次与未知、三条排序、时区跨日及画布高度；XcodeGen 和 UsageLimits scheme 构建通过。iPhone 17 / iOS 26.5 检查缩略卡等高、展开详情、辅助功能字号，以及真正保存到相册的 PNG：完整三条日期无截断、与更新时间无重叠。只读复核未发现缺陷。
 - 本轮计两项优化，z +2；未改接口或登录流程。真机、iPad 多列和系统分享扩展接收仍待设备验证。
+
+## 2026-09-10：1.5.596 Grok 用量重置次数
+
+- 参照 ChatGPT 的 `openAIResetCredits`，接入 grok.com 的「Usage Limit Reset」（一次性重置券）：新增只读探针 `resets` / `resets_facade`，快照字段 `grokUsageResets`（次数 + 到期日期数组），展开 Grok 卡在额度条下方显示「可用重置 N 次」及三行到期正序列表，超出内部滚动；分享勾选「明细」时显示次数和最多三条最早到期，是张数不画百分比。
+- 接口不是猜的：从 grok.com 自带的编译 proto 描述符（`prod/grok/backend/proto/grok_build_billing.proto`、`prod/mc/billing-proto/proto/consumer_ui.proto`）取出服务名、方法与字段号，并按前端 `useUsageResetToken` 的过滤逻辑（空 token_id / 缺 validity_end / 已过期一律丢弃，取最早到期）实现。
+- 打两条服务是因为官网按 feature flag `ENABLE_BILLING_FACADE` 二选一：false 走 `prod_mc_billing.ConsumerUiSvc`、true 走 `grok_api_v2.GrokBuildBilling`，故并发各打一次、取首个完整有效响应（`resets` 优先，零次同样有效）。
+- 只读：绝不调用 `RedeemReset`（会真花掉用户的重置券），并加单测钉死探针脚本里不出现该路径。`token_id` 是兑换凭据，只在内存里用于去重，不落盘、不进诊断日志（`DiagnosticRedactor` 对这两个探针只记状态与长度）。
+- 两条探针不参与 `RefreshPolicy` 的真实 HTTP 状态聚合，gRPC 状态非 0 一律跳过且不影响登录判定，与 `weekly` 同一张表。
+- 接手后用用户已有 Chrome 普通窗口的登录会话，在 DevTools Console 直接同源读取：两条接口均 HTTP 200 / trailer grpc-status:0，各 1 次，到期 `2026-09-12T18:49:00Z`。官网 Usage 同步显示可用、2 天后过期。兑换 ID 在浏览器内替换为 `x` 后保存真实响应夹具，Swift 测试逐服务核对次数和完整到期时间。
+- 异常报文回归先复现 12 个失败断言：压缩帧、半包、损坏 protobuf 或非空未知结构被误报 0 次。现在只接收完整 unary 消息，异常跳过并尝试另一服务；不改变已有周额度解析行为。
+- 清理重复实现：ChatGPT/Grok 共用到期列表和分享排序/日期处理，移除不再使用的 gRPC 辅助方法可见性修改，并校正 provider 文档中旧的缺失百分比口径和“再展开”描述。
+- Core 1202 项全绿，XcodeGen 与 UsageLimits scheme 构建通过；iPhone 17 / iOS 26.5 验证 ChatGPT/Claude 折叠等高、Grok 展开次数与日期，并真正保存 Grok 分享 PNG 到照片。真机 WKWebView 登录/Cookie、iPad 多列及 Watch 实机未测。
+- 本轮计一项功能，z +1。

@@ -123,6 +123,7 @@ public enum RefreshPolicy {
         results.flatMap { name, result -> [Int] in
             // Reset credits are optional metadata, never login or usage transport evidence.
             if name == "reset_credits" || name == "reset_history" { return [] }
+            if name == "resets" || name == "resets_facade" { return [] }
             if name == "origin_drift" || name == "script" { return [] }
             if isLocalCookieSession(name, result) { return [] }
             if syntheticOKKeys.contains(name) { return syntheticHTTPStatuses(name: name, result: result) }

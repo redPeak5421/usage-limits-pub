@@ -124,7 +124,7 @@ public enum GrokParser {
         }
 
         let cycle: BillingCycle? = (isAnonymous != true && PlanCatalog.hasListPrice(planName)) ? .monthly : nil
-        return ProviderSnapshot(
+        var snapshot = ProviderSnapshot(
             provider: .grok,
             planName: planName,
             metrics: metrics,
@@ -133,6 +133,11 @@ public enum GrokParser {
             isAnonymous: isAnonymous,
             billingCycle: cycle
         )
+        // 重置券只发给订阅账号；游客态和未登录都不查，免得把 leftover 次数说成现在还有。
+        if loggedIn, isAnonymous != true {
+            snapshot.grokUsageResets = GrokUsageResets.parse(results: results, now: now)
+        }
+        return snapshot
     }
 
     /// `rate_limits` 顶层是固定 200 的运输壳；只有逐 mode status 才是真实结果。

@@ -335,20 +335,27 @@ public enum ShareImageComposer {
                 }
             }
             // 可用重置是明细数值，不属于用量百分比；零次也要保留。
-            if options.showMetricDetails, !snap.isCustom, snap.provider == .openai,
-               snap.status.isOK, let resets = snap.openAIResetCredits,
-               let count = resets.availableCount {
-                let dates = resets.availableExpirations.flatMap { $0.isEmpty ? nil : $0 }
-                    ?? resets.expiresAt.map { [$0] } ?? []
-                let detailRows = dates.filter(JSONHelp.isSafeDate).sorted().prefix(min(max(count, 0), 3)).map {
-                    ShareMeter.DetailRow(label: L10n.tr("openai.reset.expiryDate", language),
-                                         value: TimeFormat.localDateTime($0, timeZone: timeZone))
+            if options.showMetricDetails, !snap.isCustom, snap.status.isOK {
+                let reset: (count: Int?, dates: [Date]?, expiry: Date?, prefix: String)?
+                switch snap.provider {
+                case .openai:
+                    reset = snap.openAIResetCredits.map { ($0.availableCount, $0.availableExpirations, $0.expiresAt, "openai.reset") }
+                case .grok:
+                    reset = snap.grokUsageResets.map { ($0.availableCount, $0.availableExpirations, $0.expiresAt, "grok.reset") }
+                default: reset = nil
                 }
-                meters.append(ShareMeter(
-                    label: L10n.tr("openai.reset.available", language),
-                    valueText: L10n.tr("openai.reset.count", language, count),
-                    usedPercent: nil, isUnused: false, detailRows: detailRows
-                ))
+                if let reset, let count = reset.count {
+                    let dates = reset.dates.flatMap { $0.isEmpty ? nil : $0 } ?? reset.expiry.map { [$0] } ?? []
+                    let detailRows = dates.filter(JSONHelp.isSafeDate).sorted().prefix(min(max(count, 0), 3)).map {
+                        ShareMeter.DetailRow(label: L10n.tr("\(reset.prefix).expiryDate", language),
+                                             value: TimeFormat.localDateTime($0, timeZone: timeZone))
+                    }
+                    meters.append(ShareMeter(
+                        label: L10n.tr("\(reset.prefix).available", language),
+                        valueText: L10n.tr("\(reset.prefix).count", language, count),
+                        usedPercent: nil, isUnused: false, detailRows: detailRows
+                    ))
+                }
             }
             let update: String?
             if options.hideUpdateTime {

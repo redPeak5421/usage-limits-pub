@@ -112,6 +112,39 @@ final class ShareImageTests: XCTestCase {
         }
     }
 
+    /// Grok 的重置券与 ChatGPT 同规矩：只在「明细」里出现，是张数不是百分比。
+    func testGrokResetsFollowShareDetailsAndAreNotAPercentage() throws {
+        let now = Date()
+        var snap = SharedStore.demoSnapshots(now: now).first { $0.provider == .grok }!
+        snap.grokUsageResets = GrokUsageResets(
+            availableCount: 5, expiresAt: now.addingTimeInterval(12 * 86400),
+            availableExpirations: [26, 12, 19, 15, 30].map { now.addingTimeInterval(Double($0) * 86400) }
+        )
+        for language in AppLanguage.concrete {
+            let label = L10n.tr("grok.reset.available", language)
+            let details = makeModel(
+                snapshots: [snap], expanded: true, language: language,
+                options: ShareComposeOptions(showMetricDetails: true), now: now
+            )
+            let row = try XCTUnwrap(details.sections[0].meters.first { $0.label == label })
+            XCTAssertEqual(row.valueText, L10n.tr("grok.reset.count", language, 5))
+            XCTAssertEqual(row.detailRows.map(\.value), [12, 15, 19].map {
+                TimeFormat.localDateTime(now.addingTimeInterval(Double($0) * 86400))
+            })
+            XCTAssertNil(row.usedPercent, "重置次数不能画成额度百分比")
+            XCTAssertFalse(row.isUnused)
+            // 不开明细就不出现，跟 ChatGPT 一致
+            let summary = makeModel(snapshots: [snap], expanded: true, language: language, now: now)
+            XCTAssertFalse(summary.sections[0].meters.contains { $0.label == label })
+        }
+        var missing = snap
+        missing.grokUsageResets = nil
+        let label = L10n.tr("grok.reset.available", .zh)
+        let model = makeModel(snapshots: [missing], expanded: true, language: .zh,
+                              options: ShareComposeOptions(showMetricDetails: true), now: now)
+        XCTAssertFalse(model.sections[0].meters.contains { $0.label == label })
+    }
+
     func testShareResetCountsKeepZeroSeparateFromMissingAndAccountScoped() {
         let now = Date()
         let snaps = [0, 3].map { count in

@@ -546,6 +546,8 @@ public struct ProviderSnapshot: Codable, Equatable, Identifiable, Sendable {
     /// 即梦近 1 个月积分流水（首页展开列表；折叠不展示）。
     public var creditHistory: [CreditLedgerEntry]?
     public var openAIResetCredits: OpenAIResetCredits?
+    /// grok.com 的一次性用量重置券摘要（只有次数与到期，绝不含兑换凭据）。
+    public var grokUsageResets: GrokUsageResets?
     /// DeepSeek 按模型的消耗（缓存命中 / 输出 token）。
     public var modelBreakdowns: [UsageBreakdown]?
     /// 自定义用量快照。`provider` 编码占位固定为 `.claude`，不得用于品牌 / 预充值卡 / 提醒档。
@@ -569,6 +571,7 @@ public struct ProviderSnapshot: Codable, Equatable, Identifiable, Sendable {
         keyBreakdowns: [UsageBreakdown]? = nil,
         creditHistory: [CreditLedgerEntry]? = nil,
         openAIResetCredits: OpenAIResetCredits? = nil,
+        grokUsageResets: GrokUsageResets? = nil,
         modelBreakdowns: [UsageBreakdown]? = nil,
         isCustom: Bool = false
     ) {
@@ -587,6 +590,7 @@ public struct ProviderSnapshot: Codable, Equatable, Identifiable, Sendable {
         self.keyBreakdowns = keyBreakdowns
         self.creditHistory = creditHistory
         self.openAIResetCredits = openAIResetCredits
+        self.grokUsageResets = grokUsageResets
         self.modelBreakdowns = modelBreakdowns
         self.isCustom = isCustom
     }
@@ -608,6 +612,7 @@ public struct ProviderSnapshot: Codable, Equatable, Identifiable, Sendable {
         keyBreakdowns = try container.decodeIfPresent([UsageBreakdown].self, forKey: .keyBreakdowns)
         creditHistory = try container.decodeIfPresent([CreditLedgerEntry].self, forKey: .creditHistory)
         openAIResetCredits = try container.decodeIfPresent(OpenAIResetCredits.self, forKey: .openAIResetCredits)
+        grokUsageResets = try container.decodeIfPresent(GrokUsageResets.self, forKey: .grokUsageResets)
         modelBreakdowns = try container.decodeIfPresent([UsageBreakdown].self, forKey: .modelBreakdowns)
         isCustom = try container.decodeIfPresent(Bool.self, forKey: .isCustom) ?? false
     }
@@ -629,6 +634,7 @@ public struct ProviderSnapshot: Codable, Equatable, Identifiable, Sendable {
         try container.encodeIfPresent(keyBreakdowns, forKey: .keyBreakdowns)
         try container.encodeIfPresent(creditHistory, forKey: .creditHistory)
         try container.encodeIfPresent(openAIResetCredits, forKey: .openAIResetCredits)
+        try container.encodeIfPresent(grokUsageResets, forKey: .grokUsageResets)
         try container.encodeIfPresent(modelBreakdowns, forKey: .modelBreakdowns)
         try container.encode(isCustom, forKey: .isCustom)
     }
@@ -637,11 +643,13 @@ public struct ProviderSnapshot: Codable, Equatable, Identifiable, Sendable {
         case provider, planName, metrics, fetchedAt, status
         case isAnonymous, billingSource, billingCycle, planProductID, planExpiresAt
         case currency, timeBreakdowns, keyBreakdowns, creditHistory, modelBreakdowns, isCustom, openAIResetCredits
+        case grokUsageResets
     }
 
     /// 落盘前的数字 / 日期闸门。越界百分比、非有限金额、不安全日期一律拒绝。
     public var persistenceValidationIssue: String? {
         if openAIResetCredits?.isValid == false { return "openAIResetCredits" }
+        if grokUsageResets?.isValid == false { return "grokUsageResets" }
         if !JSONHelp.isSafeDate(fetchedAt) { return "fetchedAt" }
         if let planExpiresAt, !JSONHelp.isSafeDate(planExpiresAt) { return "planExpiresAt" }
         for metric in metrics {

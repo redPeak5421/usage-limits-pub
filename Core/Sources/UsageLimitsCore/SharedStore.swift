@@ -663,7 +663,12 @@ public final class SharedStore: @unchecked Sendable {
                 ],
                 fetchedAt: now,
                 status: .ok,
-                billingCycle: .monthly
+                billingCycle: .monthly,
+                grokUsageResets: GrokUsageResets(
+                    availableCount: 2,
+                    expiresAt: now.addingTimeInterval(12 * 86400),
+                    availableExpirations: [12, 26].map { now.addingTimeInterval(Double($0) * 86400) }
+                )
             ),
             ProviderSnapshot(
                 provider: .cursor,

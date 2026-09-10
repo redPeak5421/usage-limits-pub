@@ -317,12 +317,22 @@ enum ProviderScripts {
     const SIDE = { headers: { 'Accept': 'application/json' }, noAuth: true, timeoutMs: 6000, retry: false };
     const subscriptionsPromise = __probe('/rest/subscriptions', SIDE);
     const creditsPromise = __probe('/rest/grok/credits', SIDE);
-    const weeklyPromise = __probeBinary('/grok_api_v2.GrokBuildBilling/GetGrokCreditsConfig', {
-        method: 'POST', noAuth: true, timeoutMs: 6000, retry: false,
-        headers: { 'content-type': 'application/grpc-web+proto', 'x-grpc-web': '1' },
-        body: new Uint8Array([0, 0, 0, 0, 0])
-    });
-    const grokValues = await Promise.all([modePromise, subscriptionsPromise, creditsPromise, weeklyPromise]);
+    // gRPC-Web 空帧请求；每次新建一份 options，别让两条探针共用同一个对象。
+    function grpcOpts() {
+        return {
+            method: 'POST', noAuth: true, timeoutMs: 6000, retry: false,
+            headers: { 'content-type': 'application/grpc-web+proto', 'x-grpc-web': '1' },
+            body: new Uint8Array([0, 0, 0, 0, 0])
+        };
+    }
+    const weeklyPromise = __probeBinary('/grok_api_v2.GrokBuildBilling/GetGrokCreditsConfig', grpcOpts());
+    // 用量额度重置券：只读，绝不调用 RedeemReset。官网按 ENABLE_BILLING_FACADE 在两条服务里二选一，
+    // 标志值随账号下发、我们看不到，所以两条各打一次，谁给出 token 用谁。
+    const resetsPromise = __probeBinary('/prod_mc_billing.ConsumerUiSvc/GetRemainingResets', grpcOpts());
+    const resetsFacadePromise = __probeBinary('/grok_api_v2.GrokBuildBilling/GetRemainingResets', grpcOpts());
+    const grokValues = await Promise.all([
+        modePromise, subscriptionsPromise, creditsPromise, weeklyPromise, resetsPromise, resetsFacadePromise
+    ]);
     const results = grokValues[0];
     probes.rate_limits = {
         // 合成壳固定 200；每个 mode 的真实 status/body 留在 results，避免一条 503
@@ -333,6 +343,8 @@ enum ProviderScripts {
     probes.subscriptions = grokValues[1];
     probes.credits = grokValues[2];
     probes.weekly = grokValues[3];
+    probes.resets = grokValues[4];
+    probes.resets_facade = grokValues[5];
     return { probes: probes };
     """#
     static let deepseek = probeHelper + #"""

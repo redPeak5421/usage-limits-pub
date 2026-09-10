@@ -3,6 +3,19 @@ import UsageLimitsCore
 
 struct OpenAIResetCreditsView: View {
     let summary: OpenAIResetCredits
+
+    var body: some View {
+        AvailableResetsView(availableCount: summary.availableCount, expiresAt: summary.expiresAt,
+                            availableExpirations: summary.availableExpirations, keyPrefix: "openai.reset")
+    }
+}
+
+/// ChatGPT 与 Grok 共用次数和到期列表布局，供应商差异只留在解析与文案键中。
+struct AvailableResetsView: View {
+    let availableCount: Int?
+    let expiresAt: Date?
+    let availableExpirations: [Date]?
+    let keyPrefix: String
     @Environment(\.appLanguage) private var lang
     @Environment(\.timeZone) private var timeZone
     private static let visibleSlots = 3
@@ -10,20 +23,20 @@ struct OpenAIResetCreditsView: View {
     @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 20
 
     var body: some View {
-        if let count = summary.availableCount {
+        if let count = availableCount {
             VStack(alignment: .leading, spacing: 8) {
                 Divider().opacity(0.45)
                 HStack(alignment: .firstTextBaseline) {
-                    Text(L10n.tr("openai.reset.available", lang))
+                    Text(L10n.tr("\(keyPrefix).available", lang))
                     Spacer(minLength: 8)
-                    Text(L10n.tr("openai.reset.count", lang, count))
+                    Text(L10n.tr("\(keyPrefix).count", lang, count))
                         .monospacedDigit().bold()
                 }
                 .font(.subheadline)
                 if count > 0 {
-                    if let dates = summary.availableExpirations, !dates.isEmpty {
+                    if let dates = availableExpirations, !dates.isEmpty {
                         resetList(dates)
-                    } else if let expires = summary.expiresAt {
+                    } else if let expires = expiresAt {
                         expiryRow(expires)
                     }
                 }
@@ -34,7 +47,7 @@ struct OpenAIResetCreditsView: View {
 
     private func expiryRow(_ date: Date) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(L10n.tr("openai.reset.expiryDate", lang))
+            Text(L10n.tr("\(keyPrefix).expiryDate", lang))
                 .foregroundStyle(.tertiary)
             Spacer(minLength: 8)
             Text(TimeFormat.localDateTime(date, timeZone: timeZone))

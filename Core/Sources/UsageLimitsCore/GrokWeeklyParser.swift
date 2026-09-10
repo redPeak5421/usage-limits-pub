@@ -410,7 +410,7 @@ public enum GrokWeeklyParser {
         return GrokWeeklyProduct(code: code, usagePercent: percent)
     }
 
-    private static func parseTimestamp(_ data: Data) -> Date? {
+    static func parseTimestamp(_ data: Data) -> Date? {
         let fields = readFields(data)
         guard let seconds = fields.first(where: { $0.number == 1 })?.varint, seconds > 0 else { return nil }
         let nanos = fields.first(where: { $0.number == 2 })?.varint ?? 0
@@ -530,7 +530,7 @@ public enum GrokWeeklyParser {
         return (scan, nextOrder)
     }
 
-    private struct ProtoField {
+    struct ProtoField {
         var number: UInt64
         var wire: UInt64
         var varint: UInt64?
@@ -538,7 +538,7 @@ public enum GrokWeeklyParser {
         var bytes: Data?
     }
 
-    private static func readFields(_ data: Data) -> [ProtoField] {
+    static func readFields(_ data: Data) -> [ProtoField] {
         var fields: [ProtoField] = []
         var index = data.startIndex
         while index < data.endIndex {

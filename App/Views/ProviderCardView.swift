@@ -236,6 +236,8 @@ struct ProviderCardView: View {
         }
         if snapshot?.provider == .openai, snapshot?.isCustom != true,
            snapshot?.openAIResetCredits?.availableCount != nil { return true }
+        if snapshot?.provider == .grok, snapshot?.isCustom != true,
+           snapshot?.grokUsageResets?.availableCount != nil { return true }
         return !(snapshot?.metrics.isEmpty ?? true)
     }
 
@@ -445,6 +447,10 @@ struct ProviderCardView: View {
                     if isExpanded, !isCustom, snap.provider == .openai,
                        let resets = snap.openAIResetCredits {
                         OpenAIResetCreditsView(summary: resets)
+                    }
+                    if isExpanded, !isCustom, snap.provider == .grok,
+                       let resets = snap.grokUsageResets {
+                        GrokUsageResetsView(summary: resets)
                     }
                     if !isCustom, snap.isAnonymous == true {
                         Button {

@@ -34,6 +34,8 @@ public enum DiagnosticRedactor {
         if providerRaw == ProviderID.longcat.rawValue && probeName == "user" { return true }
         if providerRaw == ProviderID.openai.rawValue && probeName == "session" { return true }
         if providerRaw == ProviderID.openai.rawValue && ["reset_credits", "reset_history"].contains(probeName) { return true }
+        // 重置券响应里带 token_id，是可兑换凭据：只记状态与长度，绝不预览 body。
+        if providerRaw == ProviderID.grok.rawValue && ["resets", "resets_facade"].contains(probeName) { return true }
         if providerRaw == ProviderID.deepseek.rawValue && probeName == "current" { return true }
         if providerRaw == ProviderID.deepseek.rawValue && probeName == "api_keys" { return true }
         if providerRaw == ProviderID.kimi.rawValue && probeName == "user" { return true }

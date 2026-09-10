@@ -406,6 +406,10 @@ public enum L10n {
         "openai.reset.expires": [.zh: "最近到期", .zhHant: "最近到期", .en: "Earliest expiry", .ja: "最も近い有効期限", .fr: "Prochaine expiration", .ru: "Ближайший срок"],
         "openai.reset.count": [.zh: "%ld 次", .zhHant: "%ld 次", .en: "%ld", .ja: "%ld 回", .fr: "%ld", .ru: "%ld"],
         "openai.reset.atLeast": [.zh: "至少 %ld 次", .zhHant: "至少 %ld 次", .en: "At least %ld", .ja: "%ld 回以上", .fr: "Au moins %ld", .ru: "Не менее %ld"],
+        // grok.com「Usage Limit Reset」：一次性重置券，用一张清零一次本周期用量。
+        "grok.reset.available": [.zh: "可用重置", .zhHant: "可用重置", .en: "Available resets", .ja: "利用可能", .fr: "Disponibles", .ru: "Доступно"],
+        "grok.reset.expiryDate": [.zh: "到期", .zhHant: "到期", .en: "Expires", .ja: "有効期限", .fr: "Expiration", .ru: "Истекает"],
+        "grok.reset.count": [.zh: "%ld 次", .zhHant: "%ld 次", .en: "%ld", .ja: "%ld 回", .fr: "%ld", .ru: "%ld"],
         "dashboard.action.expand": [
             .zh: "展开当前账号", .zhHant: "展開目前帳號", .en: "Expand account", .ja: "アカウントを展開",
             .fr: "Développer le compte", .ru: "Развернуть аккаунт",

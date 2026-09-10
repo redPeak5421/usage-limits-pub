@@ -398,6 +398,8 @@ final class DashboardSceneSourceTests: XCTestCase {
             }
             if snapshot?.provider == .openai, snapshot?.isCustom != true,
                snapshot?.openAIResetCredits?.availableCount != nil { return true }
+            if snapshot?.provider == .grok, snapshot?.isCustom != true,
+               snapshot?.grokUsageResets?.availableCount != nil { return true }
             return !(snapshot?.metrics.isEmpty ?? true)
         }
         """
