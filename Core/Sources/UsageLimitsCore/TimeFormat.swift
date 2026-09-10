@@ -4,6 +4,17 @@ import Foundation
 public enum TimeFormat {
     private static let invalidPlaceholder = "—"
 
+    /// Fixed Gregorian calendar date in the user's time zone, independent of display language.
+    public static func yearMonthDay(_ date: Date, timeZone: TimeZone = .autoupdatingCurrent) -> String {
+        guard JSONHelp.isSafeDate(date) else { return invalidPlaceholder }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
     public static func relative(_ date: Date, now: Date = Date(), language: AppLanguage = .zh) -> String {
         let interval = date.timeIntervalSince(now)
         guard let minutes = safeRoundedMinutes(interval) else { return invalidPlaceholder }

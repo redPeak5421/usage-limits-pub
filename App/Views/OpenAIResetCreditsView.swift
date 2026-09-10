@@ -6,6 +6,7 @@ struct OpenAIResetCreditsView: View {
     let isExpanded: Bool
     var compact: Bool = false
     @Environment(\.appLanguage) private var lang
+    @Environment(\.timeZone) private var timeZone
     private static let visibleSlots = 3
     private static let rowSpacing: CGFloat = 4
     @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 20
@@ -48,10 +49,7 @@ struct OpenAIResetCreditsView: View {
     }
 
     private func expiryText(_ date: Date) -> String {
-        L10n.tr("openai.reset.expiryDate", lang) + " " + date.formatted(
-            .dateTime.month(.twoDigits).day(.twoDigits).hour().minute()
-                .locale(Locale(identifier: lang.resolved.rawValue))
-        )
+        L10n.tr("openai.reset.expiryDate", lang) + " " + TimeFormat.yearMonthDay(date, timeZone: timeZone)
     }
 
     private func expiryRow(_ date: Date) -> some View {
@@ -59,10 +57,7 @@ struct OpenAIResetCreditsView: View {
             Text(L10n.tr("openai.reset.expiryDate", lang))
                 .foregroundStyle(.tertiary)
             Spacer(minLength: 8)
-            Text(date.formatted(
-                .dateTime.month(.twoDigits).day(.twoDigits).hour().minute()
-                    .locale(Locale(identifier: lang.resolved.rawValue))
-            ))
+            Text(TimeFormat.yearMonthDay(date, timeZone: timeZone))
             .monospacedDigit()
             .foregroundStyle(.secondary)
             .layoutPriority(1)
