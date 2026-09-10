@@ -7,8 +7,8 @@ struct OpenAIResetCreditsView: View {
     var compact: Bool = false
     @Environment(\.appLanguage) private var lang
     private static let visibleSlots = 3
-    private static let rowSpacing: CGFloat = 2
-    @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 22
+    private static let rowSpacing: CGFloat = 4
+    @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 20
 
     var body: some View {
         if let count = summary.availableCount {
@@ -25,10 +25,10 @@ struct OpenAIResetCreditsView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Divider().opacity(0.45)
+                    HStack(alignment: .firstTextBaseline) {
                         Text(L10n.tr("openai.reset.available", lang))
-                            .foregroundStyle(.secondary)
                         Spacer(minLength: 8)
                         Text(L10n.tr("openai.reset.count", lang, count))
                             .monospacedDigit().bold()
@@ -55,11 +55,21 @@ struct OpenAIResetCreditsView: View {
     }
 
     private func expiryRow(_ date: Date) -> some View {
-        Text(expiryText(date))
-            .font(.caption)
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(L10n.tr("openai.reset.expiryDate", lang))
+                .foregroundStyle(.tertiary)
+            Spacer(minLength: 8)
+            Text(date.formatted(
+                .dateTime.month(.twoDigits).day(.twoDigits).hour().minute()
+                    .locale(Locale(identifier: lang.resolved.rawValue))
+            ))
+            .monospacedDigit()
             .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
+        }
+        .font(.caption)
+        .lineLimit(1)
+        .accessibilityElement(children: .combine)
     }
 
     private func resetList(_ dates: [Date]) -> some View {
