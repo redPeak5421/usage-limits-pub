@@ -27,6 +27,8 @@ struct DashboardFlatView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// regular 宽度（iPad 竖 / 横屏、Stage Manager 大窗）铺多列；compact（iPhone、iPad 1/3 分屏）保持单列原版。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var collapsedCardHeight: CGFloat = 0
     /// 正在长按拖动的卡片。
     @State private var draggingAccountID: UUID?
     @State private var draggingProvider: ProviderID?
@@ -50,6 +52,7 @@ struct DashboardFlatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 listContent
+                    .environment(\.dashboardFlatCollapsedHeight, collapsedCardHeight)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .coordinateSpace(name: "dashboardList")
@@ -75,7 +78,15 @@ struct DashboardFlatView: View {
                 reveal(target, using: proxy)
             }
             .onChange(of: usesMultiColumn) { _, _ in
+                collapsedCardHeight = 0
                 restoreTopAnchor(using: proxy)
+            }
+            .onChange(of: dynamicTypeSize) { _, _ in
+                collapsedCardHeight = 0
+            }
+            .onPreferenceChange(DashboardFlatCollapsedHeightKey.self) { height in
+                // 懒列表保留见过的最大值，滚走较高的卡片时其余卡不跳动。
+                if height > collapsedCardHeight { collapsedCardHeight = height }
             }
             .onAppear {
                 reveal(revealTarget, using: proxy)

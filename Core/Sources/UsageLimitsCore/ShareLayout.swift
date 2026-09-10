@@ -31,6 +31,7 @@ public enum ShareLayout {
     public static let barHeight: CGFloat = 6
     public static let barOffsetY: CGFloat = 18
     public static let captionTextHeight: CGFloat = 12
+    public static let detailRowHeight: CGFloat = 14
     public static let captionLift: CGFloat = 8
     public static let updateHeight: CGFloat = 14
     /// 卡片底部余量：`cardH` 的 26 计到标题行、绘制起点却是 +38，差额落在末尾。
@@ -52,6 +53,7 @@ public enum ShareLayout {
             let hasBar = meter.usedPercent != nil
             return total + (hasBar ? meterHeight : labelOnlyHeight)
                 + (meter.hasCaption ? captionAdvance(hasBar: hasBar) : 0)
+                + CGFloat(meter.detailRows.count) * detailRowHeight
         }
     }
 

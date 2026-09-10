@@ -194,6 +194,22 @@ struct ShareCardView: View {
                 .frame(height: ShareLayout.captionAdvance(hasBar: hasBar), alignment: .top)
                 .transition(.opacity)
             }
+            if !meter.detailRows.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(meter.detailRows.map(\.label).joined(separator: "\n"))
+                        .foregroundStyle(ShareLayout.captionInk)
+                    Spacer(minLength: 0)
+                    Text(meter.detailRows.map(\.value).joined(separator: "\n"))
+                        .monospacedDigit()
+                        .multilineTextAlignment(.trailing)
+                        .foregroundStyle(ShareLayout.resetInk)
+                }
+                .font(.system(size: 10))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(height: CGFloat(meter.detailRows.count) * ShareLayout.detailRowHeight, alignment: .top)
+                .transition(.opacity)
+            }
         }
     }
 

@@ -92,6 +92,10 @@ public struct ShareComposeOptions: Codable, Equatable, Sendable {
 
 /// 一条用量：标签 + 进度条 + 数值（首页卡片同款）。
 public struct ShareMeter: Equatable, Sendable {
+    public struct DetailRow: Equatable, Sendable {
+        public var label: String
+        public var value: String
+    }
     public var label: String
     public var valueText: String
     public var usedPercent: Double?
@@ -100,6 +104,8 @@ public struct ShareMeter: Equatable, Sendable {
     public var detailText: String?
     /// 计量条下右侧的重置文案（含前缀），nil = 该指标没有重置时间。
     public var resetText: String?
+    /// 可导出的静态明细行，例如可用重置的前三个到期时间。
+    public var detailRows: [DetailRow]
 
     public init(
         label: String,
@@ -107,7 +113,8 @@ public struct ShareMeter: Equatable, Sendable {
         usedPercent: Double?,
         isUnused: Bool,
         detailText: String? = nil,
-        resetText: String? = nil
+        resetText: String? = nil,
+        detailRows: [DetailRow] = []
     ) {
         self.label = label
         self.valueText = valueText
@@ -115,6 +122,7 @@ public struct ShareMeter: Equatable, Sendable {
         self.isUnused = isUnused
         self.detailText = detailText
         self.resetText = resetText
+        self.detailRows = detailRows
     }
 
     /// 明细行是否有内容可画。
@@ -238,7 +246,8 @@ public enum ShareImageComposer {
         tints: [BrandTint?] = [],
         displayMode: UsageDisplayMode = .used,
         resetTimeStyle: ResetTimeStyle = .countdown,
-        now: Date = Date()
+        now: Date = Date(),
+        timeZone: TimeZone = .autoupdatingCurrent
     ) -> ShareCardModel {
         var sections: [ShareCardModel.Section] = []
         var texts: [String] = [ShareChrome.appTitle]
@@ -325,6 +334,22 @@ public enum ShareImageComposer {
                     ))
                 }
             }
+            // 可用重置是明细数值，不属于用量百分比；零次也要保留。
+            if options.showMetricDetails, !snap.isCustom, snap.provider == .openai,
+               snap.status.isOK, let resets = snap.openAIResetCredits,
+               let count = resets.availableCount {
+                let dates = resets.availableExpirations.flatMap { $0.isEmpty ? nil : $0 }
+                    ?? resets.expiresAt.map { [$0] } ?? []
+                let detailRows = dates.filter(JSONHelp.isSafeDate).sorted().prefix(min(max(count, 0), 3)).map {
+                    ShareMeter.DetailRow(label: L10n.tr("openai.reset.expiryDate", language),
+                                         value: TimeFormat.localDateTime($0, timeZone: timeZone))
+                }
+                meters.append(ShareMeter(
+                    label: L10n.tr("openai.reset.available", language),
+                    valueText: L10n.tr("openai.reset.count", language, count),
+                    usedPercent: nil, isUnused: false, detailRows: detailRows
+                ))
+            }
             let update: String?
             if options.hideUpdateTime {
                 update = nil
@@ -359,6 +384,7 @@ public enum ShareImageComposer {
             texts.append(title)
             texts.append(contentsOf: meters.map { "\($0.label)  \($0.valueText)" })
             texts.append(contentsOf: meters.flatMap { [$0.detailText, $0.resetText].compactMap { $0 } })
+            texts.append(contentsOf: meters.flatMap { $0.detailRows.map { "\($0.label)  \($0.value)" } })
             if let update { texts.append(update) }
             sections.append(.init(
                 provider: snap.provider,

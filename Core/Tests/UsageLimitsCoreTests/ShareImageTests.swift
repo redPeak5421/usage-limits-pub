@@ -91,6 +91,79 @@ final class ShareImageTests: XCTestCase {
         XCTAssertTrue(result.visibleTexts.contains("ChatGPT"))
     }
 
+    func testAvailableResetsFollowShareDetailsRegardlessOfCardExpansion() throws {
+        var snap = SharedStore.demoSnapshots(now: Date()).first { $0.provider == .openai }!
+        snap.openAIResetCredits = OpenAIResetCredits(availableCount: 5, historyComplete: false)
+        for expanded in [false, true] {
+            for language in AppLanguage.concrete {
+                let label = L10n.tr("openai.reset.available", language)
+                let details = makeModel(
+                    snapshots: [snap], expanded: expanded, language: language,
+                    options: ShareComposeOptions(showMetricDetails: true)
+                )
+                let row = try XCTUnwrap(details.sections[0].meters.first { $0.label == label })
+                XCTAssertEqual(row.valueText, L10n.tr("openai.reset.count", language, 5))
+                XCTAssertNil(row.usedPercent, "重置次数不能画成额度百分比")
+                XCTAssertFalse(row.isUnused)
+                XCTAssertTrue(details.visibleTexts.contains("\(label)  \(row.valueText)"))
+                let summary = makeModel(snapshots: [snap], expanded: expanded, language: language)
+                XCTAssertFalse(summary.sections[0].meters.contains { $0.label == label })
+            }
+        }
+    }
+
+    func testShareResetCountsKeepZeroSeparateFromMissingAndAccountScoped() {
+        let now = Date()
+        let snaps = [0, 3].map { count in
+            ProviderSnapshot(provider: .openai, metrics: [], fetchedAt: now, status: .ok,
+                             openAIResetCredits: OpenAIResetCredits(availableCount: count, historyComplete: false))
+        }
+        let options = ShareComposeOptions(hideUnusedMetrics: true, showMetricDetails: true)
+        let model = makeModel(snapshots: snaps, expanded: true, language: .zh, options: options)
+        XCTAssertEqual(model.sections.map { $0.meters.last?.valueText }, ["0 次", "3 次"])
+        XCTAssertTrue(model.sections.allSatisfy { $0.meters.count == 1 })
+        var missing = snaps[0]
+        missing.openAIResetCredits = nil
+        var custom = snaps[1]
+        custom.isCustom = true
+        var failed = snaps[1]
+        failed.status = .needsLogin
+        let excluded = makeModel(snapshots: [missing, custom, failed], expanded: true,
+                                 language: .zh, options: options)
+        XCTAssertFalse(excluded.visibleTexts.contains { $0.contains("可用重置") })
+    }
+
+    func testShareResetDetailsShowThreeEarliestExpirationsInUserTimeZone() throws {
+        let dates = [8, 5, 7, 6].map { JSONHelp.date("2026-10-0\($0)T04:21:20Z")! }
+        var snap = ProviderSnapshot(provider: .openai, fetchedAt: Date(), status: .ok,
+                                   openAIResetCredits: OpenAIResetCredits(
+                                    availableCount: 4, historyComplete: false, availableExpirations: dates))
+        let options = ShareComposeOptions(showMetricDetails: true)
+        let model = ShareImageComposer.model(
+            snapshots: [snap], expanded: false, language: .zh, hasIcon: false, hasQR: false,
+            options: options, timeZone: TimeZone(identifier: "Asia/Shanghai")!
+        )
+        let row = try XCTUnwrap(model.sections[0].meters.first)
+        XCTAssertEqual(row.detailRows.map(\.label), ["到期", "到期", "到期"])
+        XCTAssertEqual(row.detailRows.map(\.value), [
+            "2026-10-05 12:21:20", "2026-10-06 12:21:20", "2026-10-07 12:21:20"
+        ])
+        XCTAssertTrue(model.visibleTexts.contains { $0.contains("2026-10-05 12:21:20") })
+        XCTAssertFalse(model.visibleTexts.contains { $0.contains("2026-10-08") })
+        let fullHeight = ShareLayout.canvasHeight(of: model)
+        snap.openAIResetCredits?.availableExpirations = nil
+        snap.openAIResetCredits?.expiresAt = dates[1]
+        let legacy = ShareImageComposer.model(
+            snapshots: [snap], expanded: false, language: .zh, hasIcon: false, hasQR: false,
+            options: options, timeZone: TimeZone(identifier: "America/Los_Angeles")!
+        )
+        XCTAssertEqual(legacy.sections[0].meters.first?.detailRows.map(\.value), ["2026-10-04 21:21:20"])
+        XCTAssertEqual(fullHeight - ShareLayout.canvasHeight(of: legacy), ShareLayout.detailRowHeight * 2)
+        snap.openAIResetCredits?.availableCount = 0
+        let zero = makeModel(snapshots: [snap], expanded: true, language: .zh, options: options)
+        XCTAssertEqual(zero.sections[0].meters.first?.detailRows, [])
+    }
+
     func testCustomShareSectionDoesNotUsePlaceholderProviderLogo() {
         let snap = ProviderSnapshot(
             provider: .claude,

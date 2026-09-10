@@ -157,6 +157,7 @@ struct ProviderCardView: View {
             .environment(\.usageBarDecorator, edition.usageBarDecorator(tint: resolvedTint, tinted: tintedBars, shimmer: barShimmer))
         }
         .padding(Self.cardPadding)
+        .modifier(DashboardFlatCardSizing(isActive: isFlatLayout && !isExpanded))
         // 折叠态场景卡：内容整块垂直居中；展开态与平铺按内容定高，顶对齐
         .frame(
             maxWidth: .infinity,
@@ -437,19 +438,13 @@ struct ProviderCardView: View {
                         metricsList(snap)
                         if isExpanded {
                             unusedMetricsFooter(snap)
-                        } else if sceneTheme != nil, snap.provider == .openai,
-                                  snap.openAIResetCredits?.availableCount != nil,
-                                  let resets = snap.openAIResetCredits {
-                            OpenAIResetCreditsView(summary: resets, isExpanded: false, compact: true)
                         } else {
                             expandHint(snap)
                         }
                     }
-                    if !isCustom, snap.provider == .openai, snap.status.isOK,
-                       snap.openAIResetCredits?.availableCount != nil,
-                       (sceneTheme == nil || isExpanded || snap.metrics.isEmpty),
+                    if isExpanded, !isCustom, snap.provider == .openai,
                        let resets = snap.openAIResetCredits {
-                        OpenAIResetCreditsView(summary: resets, isExpanded: isExpanded)
+                        OpenAIResetCreditsView(summary: resets)
                     }
                     if !isCustom, snap.isAnonymous == true {
                         Button {

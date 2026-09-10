@@ -3,8 +3,6 @@ import UsageLimitsCore
 
 struct OpenAIResetCreditsView: View {
     let summary: OpenAIResetCredits
-    let isExpanded: Bool
-    var compact: Bool = false
     @Environment(\.appLanguage) private var lang
     @Environment(\.timeZone) private var timeZone
     private static let visibleSlots = 3
@@ -13,43 +11,25 @@ struct OpenAIResetCreditsView: View {
 
     var body: some View {
         if let count = summary.availableCount {
-            if compact {
-                HStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
+                Divider().opacity(0.45)
+                HStack(alignment: .firstTextBaseline) {
                     Text(L10n.tr("openai.reset.available", lang))
+                    Spacer(minLength: 8)
                     Text(L10n.tr("openai.reset.count", lang, count))
-                    if count > 0, let expires = summary.expiresAt {
-                        Text("· " + expiryText(expires))
+                        .monospacedDigit().bold()
+                }
+                .font(.subheadline)
+                if count > 0 {
+                    if let dates = summary.availableExpirations, !dates.isEmpty {
+                        resetList(dates)
+                    } else if let expires = summary.expiresAt {
+                        expiryRow(expires)
                     }
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Divider().opacity(0.45)
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(L10n.tr("openai.reset.available", lang))
-                        Spacer(minLength: 8)
-                        Text(L10n.tr("openai.reset.count", lang, count))
-                            .monospacedDigit().bold()
-                    }
-                    .font(.subheadline)
-                    if count > 0 {
-                        if isExpanded, let dates = summary.availableExpirations, !dates.isEmpty {
-                            resetList(dates)
-                        } else if let expires = summary.expiresAt {
-                            expiryRow(expires)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    private func expiryText(_ date: Date) -> String {
-        L10n.tr("openai.reset.expiryDate", lang) + " " + TimeFormat.localDateTime(date, timeZone: timeZone)
     }
 
     private func expiryRow(_ date: Date) -> some View {
@@ -58,9 +38,9 @@ struct OpenAIResetCreditsView: View {
                 .foregroundStyle(.tertiary)
             Spacer(minLength: 8)
             Text(TimeFormat.localDateTime(date, timeZone: timeZone))
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-            .layoutPriority(1)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .layoutPriority(1)
         }
         .font(.caption)
         .lineLimit(1)

@@ -141,4 +141,12 @@ final class OpenAIResetCreditsTests: XCTestCase {
         snap.openAIResetCredits?.usedDates = [Date(timeIntervalSince1970: .infinity)]
         XCTAssertNotNil(snap.persistenceValidationIssue)
     }
+
+    func testResetPanelOnlyRendersInsideExpandedCard() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("App/Views/ProviderCardView.swift"))
+        XCTAssertEqual(source.components(separatedBy: "OpenAIResetCreditsView(").count - 1, 1)
+        XCTAssertTrue(source.contains("if isExpanded, !isCustom, snap.provider == .openai"))
+        XCTAssertFalse(source.contains("(sceneTheme == nil || isExpanded || snap.metrics.isEmpty)"))
+    }
 }
