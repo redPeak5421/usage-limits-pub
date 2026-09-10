@@ -163,6 +163,15 @@ struct SharePreviewSheet: View {
                     options.showMetricDetails.toggle()
                     persistAndRemodel()
                 }
+                if pickedInputs.contains(where: {
+                    !$0.snapshot.isCustom && [.openai, .grok].contains($0.snapshot.provider)
+                }) {
+                    chip(L10n.tr("share.opt.resets", lang), on: options.showAvailableResets) {
+                        options.showAvailableResets.toggle()
+                        persistAndRemodel()
+                    }
+                    .accessibilityIdentifier("share.opt.resets")
+                }
                 chip(L10n.tr("share.opt.hideTime", lang), on: options.hideUpdateTime) {
                     options.hideUpdateTime.toggle()
                     persistAndRemodel()
@@ -198,6 +207,7 @@ struct SharePreviewSheet: View {
                 .foregroundStyle(on ? Color.accentColor : Color.primary)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private var manageButton: some View {

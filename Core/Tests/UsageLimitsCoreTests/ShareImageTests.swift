@@ -91,7 +91,59 @@ final class ShareImageTests: XCTestCase {
         XCTAssertTrue(result.visibleTexts.contains("ChatGPT"))
     }
 
-    func testAvailableResetsFollowShareDetailsRegardlessOfCardExpansion() throws {
+    func testResetVisibilityIsIndependentFromMetricDetails() throws {
+        let now = Date(timeIntervalSince1970: 1_760_000_000)
+        let dates = [4, 1, 3, 2].map { now.addingTimeInterval(Double($0) * 86400) }
+        for provider in [ProviderID.openai, .grok] {
+            let snap = ProviderSnapshot(
+                provider: provider,
+                metrics: [UsageMetric(id: "weekly", label: "Weekly", usedPercent: 20,
+                                      resetsAt: dates[0], detail: "Used", pinned: true)],
+                fetchedAt: now, status: .ok,
+                openAIResetCredits: provider == .openai
+                    ? OpenAIResetCredits(availableCount: 4, historyComplete: false, availableExpirations: dates) : nil,
+                grokUsageResets: provider == .grok
+                    ? GrokUsageResets(availableCount: 4, availableExpirations: dates) : nil
+            )
+            for expanded in [false, true] {
+                for details in [false, true] {
+                    for resets in [false, true] {
+                        let json = "{\"showMetricDetails\":\(details),\"showAvailableResets\":\(resets)}"
+                        let options = try JSONDecoder().decode(ShareComposeOptions.self, from: Data(json.utf8))
+                        let model = makeModel(snapshots: [snap], expanded: expanded, language: .zh,
+                                              options: options, now: now)
+                        let meters = model.sections[0].meters
+                        XCTAssertEqual(meters[0].hasCaption, details)
+                        XCTAssertEqual(meters.count, resets ? 2 : 1, "\(provider) details=\(details), resets=\(resets)")
+                        XCTAssertEqual(meters.flatMap(\.detailRows).count, resets ? 3 : 0)
+                        XCTAssertEqual(model.visibleTexts.contains { $0.contains("可用重置") }, resets)
+                    }
+                }
+            }
+        }
+    }
+
+    func testResetPreferenceMigratesLegacyDetailsAndPersistsIndependentChoice() throws {
+        let suite = "test.share-reset-options.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = SharedStore(defaults: defaults)
+        for (json, expected) in [
+            ("{}", false),
+            ("{\"showMetricDetails\":true}", true),
+            ("{\"showMetricDetails\":false}", false),
+            ("{\"showMetricDetails\":true,\"showAvailableResets\":false}", false),
+            ("{\"showMetricDetails\":false,\"showAvailableResets\":true}", true)
+        ] {
+            defaults.set(Data(json.utf8), forKey: "shareComposeOptions")
+            store.shareComposeOptions = store.shareComposeOptions
+            let data = try XCTUnwrap(defaults.data(forKey: "shareComposeOptions"))
+            let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(saved["showAvailableResets"] as? Bool, expected, json)
+        }
+    }
+
+    func testAvailableResetsFollowResetOptionRegardlessOfCardExpansion() throws {
         var snap = SharedStore.demoSnapshots(now: Date()).first { $0.provider == .openai }!
         snap.openAIResetCredits = OpenAIResetCredits(availableCount: 5, historyComplete: false)
         for expanded in [false, true] {
@@ -99,7 +151,7 @@ final class ShareImageTests: XCTestCase {
                 let label = L10n.tr("openai.reset.available", language)
                 let details = makeModel(
                     snapshots: [snap], expanded: expanded, language: language,
-                    options: ShareComposeOptions(showMetricDetails: true)
+                    options: ShareComposeOptions(showAvailableResets: true)
                 )
                 let row = try XCTUnwrap(details.sections[0].meters.first { $0.label == label })
                 XCTAssertEqual(row.valueText, L10n.tr("openai.reset.count", language, 5))
@@ -112,8 +164,8 @@ final class ShareImageTests: XCTestCase {
         }
     }
 
-    /// Grok 的重置券与 ChatGPT 同规矩：只在「明细」里出现，是张数不是百分比。
-    func testGrokResetsFollowShareDetailsAndAreNotAPercentage() throws {
+    /// Grok 的重置券与 ChatGPT 同规矩：由「重置次数」控制，是张数不是百分比。
+    func testGrokResetsFollowResetOptionAndAreNotAPercentage() throws {
         let now = Date()
         var snap = SharedStore.demoSnapshots(now: now).first { $0.provider == .grok }!
         snap.grokUsageResets = GrokUsageResets(
@@ -124,7 +176,7 @@ final class ShareImageTests: XCTestCase {
             let label = L10n.tr("grok.reset.available", language)
             let details = makeModel(
                 snapshots: [snap], expanded: true, language: language,
-                options: ShareComposeOptions(showMetricDetails: true), now: now
+                options: ShareComposeOptions(showAvailableResets: true), now: now
             )
             let row = try XCTUnwrap(details.sections[0].meters.first { $0.label == label })
             XCTAssertEqual(row.valueText, L10n.tr("grok.reset.count", language, 5))
@@ -133,7 +185,7 @@ final class ShareImageTests: XCTestCase {
             })
             XCTAssertNil(row.usedPercent, "重置次数不能画成额度百分比")
             XCTAssertFalse(row.isUnused)
-            // 不开明细就不出现，跟 ChatGPT 一致
+            // 不开重置次数就不出现，跟 ChatGPT 一致。
             let summary = makeModel(snapshots: [snap], expanded: true, language: language, now: now)
             XCTAssertFalse(summary.sections[0].meters.contains { $0.label == label })
         }
@@ -141,7 +193,7 @@ final class ShareImageTests: XCTestCase {
         missing.grokUsageResets = nil
         let label = L10n.tr("grok.reset.available", .zh)
         let model = makeModel(snapshots: [missing], expanded: true, language: .zh,
-                              options: ShareComposeOptions(showMetricDetails: true), now: now)
+                              options: ShareComposeOptions(showAvailableResets: true), now: now)
         XCTAssertFalse(model.sections[0].meters.contains { $0.label == label })
     }
 
@@ -151,7 +203,7 @@ final class ShareImageTests: XCTestCase {
             ProviderSnapshot(provider: .openai, metrics: [], fetchedAt: now, status: .ok,
                              openAIResetCredits: OpenAIResetCredits(availableCount: count, historyComplete: false))
         }
-        let options = ShareComposeOptions(hideUnusedMetrics: true, showMetricDetails: true)
+        let options = ShareComposeOptions(hideUnusedMetrics: true, showAvailableResets: true)
         let model = makeModel(snapshots: snaps, expanded: true, language: .zh, options: options)
         XCTAssertEqual(model.sections.map { $0.meters.last?.valueText }, ["0 次", "3 次"])
         XCTAssertTrue(model.sections.allSatisfy { $0.meters.count == 1 })
@@ -171,7 +223,7 @@ final class ShareImageTests: XCTestCase {
         var snap = ProviderSnapshot(provider: .openai, fetchedAt: Date(), status: .ok,
                                    openAIResetCredits: OpenAIResetCredits(
                                     availableCount: 4, historyComplete: false, availableExpirations: dates))
-        let options = ShareComposeOptions(showMetricDetails: true)
+        let options = ShareComposeOptions(showAvailableResets: true)
         let model = ShareImageComposer.model(
             snapshots: [snap], expanded: false, language: .zh, hasIcon: false, hasQR: false,
             options: options, timeZone: TimeZone(identifier: "Asia/Shanghai")!

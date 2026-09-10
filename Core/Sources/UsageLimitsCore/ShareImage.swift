@@ -51,7 +51,7 @@ public enum ShareChrome {
     }
 }
 
-/// 分享预览上可切换、并持久化的四项：隐藏更新时间 / 隐藏未使用指标 / 用量条同色 / 彩虹光晕。
+/// 分享预览上可切换、并持久化的显示选项。
 public struct ShareComposeOptions: Codable, Equatable, Sendable {
     public var hideUpdateTime: Bool
     public var hideUnusedMetrics: Bool
@@ -61,6 +61,8 @@ public struct ShareComposeOptions: Codable, Equatable, Sendable {
     public var hideBrandRow: Bool
     /// 计量条下带实例明细：重置倒计时、已用金额等（只画实例实际有的，不预设）。
     public var showMetricDetails: Bool
+    /// 独立显示 Grok / ChatGPT 的可用重置次数及最多三条到期明细。
+    public var showAvailableResets: Bool
 
     public init(
         hideUpdateTime: Bool = false,
@@ -68,7 +70,8 @@ public struct ShareComposeOptions: Codable, Equatable, Sendable {
         sameColorBars: Bool = false,
         rainbowGlow: Bool = true,
         hideBrandRow: Bool = false,
-        showMetricDetails: Bool = false
+        showMetricDetails: Bool = false,
+        showAvailableResets: Bool = false
     ) {
         self.hideUpdateTime = hideUpdateTime
         self.hideUnusedMetrics = hideUnusedMetrics
@@ -76,6 +79,7 @@ public struct ShareComposeOptions: Codable, Equatable, Sendable {
         self.rainbowGlow = rainbowGlow
         self.hideBrandRow = hideBrandRow
         self.showMetricDetails = showMetricDetails
+        self.showAvailableResets = showAvailableResets
     }
 
     public init(from decoder: Decoder) throws {
@@ -87,6 +91,8 @@ public struct ShareComposeOptions: Codable, Equatable, Sendable {
         rainbowGlow = try c.decodeIfPresent(Bool.self, forKey: .rainbowGlow) ?? true
         hideBrandRow = try c.decodeIfPresent(Bool.self, forKey: .hideBrandRow) ?? false
         showMetricDetails = try c.decodeIfPresent(Bool.self, forKey: .showMetricDetails) ?? false
+        // 旧设置的重置内容跟随「明细」；迁移时保留原选择，之后独立持久化。
+        showAvailableResets = try c.decodeIfPresent(Bool.self, forKey: .showAvailableResets) ?? showMetricDetails
     }
 }
 
@@ -334,8 +340,8 @@ public enum ShareImageComposer {
                     ))
                 }
             }
-            // 可用重置是明细数值，不属于用量百分比；零次也要保留。
-            if options.showMetricDetails, !snap.isCustom, snap.status.isOK {
+            // 重置次数与普通指标明细独立控制；次数不画百分比，零次也要保留。
+            if options.showAvailableResets, !snap.isCustom, snap.status.isOK {
                 let reset: (count: Int?, dates: [Date]?, expiry: Date?, prefix: String)?
                 switch snap.provider {
                 case .openai:

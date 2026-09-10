@@ -1776,6 +1776,10 @@ public enum L10n {
             .zh: "明细", .zhHant: "明細", .en: "Details", .ja: "詳細",
             .fr: "Détails", .ru: "Детали",
         ],
+        "share.opt.resets": [
+            .zh: "重置次数", .zhHant: "重置次數", .en: "Resets", .ja: "リセット回数",
+            .fr: "Réinitialisations", .ru: "Сбросы",
+        ],
         "share.opt.hideTime": [
             .zh: "隐藏时间", .zhHant: "隱藏時間", .en: "No time", .ja: "時刻を隠す",
             .fr: "Sans heure", .ru: "Без времени",
