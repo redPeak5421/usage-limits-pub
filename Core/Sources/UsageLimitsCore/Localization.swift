@@ -399,6 +399,8 @@ public enum L10n {
     /// 漏填会静默回落英语，由 `LocalizationTests` 的覆盖度契约拦住。internal 仅为该测试可见。
     static let table: [String: [AppLanguage: String]] = [
         "openai.reset.title": [.zh: "Codex 完全重置", .zhHant: "Codex 完全重置", .en: "Codex full resets", .ja: "Codex 完全リセット", .fr: "Réinitialisations Codex", .ru: "Полный сброс Codex"],
+        "openai.reset.expiryDate": [.zh: "到期", .zhHant: "到期", .en: "Expires", .ja: "有効期限", .fr: "Expiration", .ru: "Истекает"],
+        "openai.reset.usedDate": [.zh: "使用于", .zhHant: "使用於", .en: "Used", .ja: "使用日時", .fr: "Utilisée le", .ru: "Использовано"],
         "openai.reset.available": [.zh: "可用重置", .zhHant: "可用重置", .en: "Available resets", .ja: "利用可能", .fr: "Disponibles", .ru: "Доступно"],
         "openai.reset.used": [.zh: "期间已重置", .zhHant: "期間已重置", .en: "Used in this period", .ja: "期間内の使用回数", .fr: "Utilisées sur la période", .ru: "Использовано за период"],
         "openai.reset.expires": [.zh: "最近到期", .zhHant: "最近到期", .en: "Earliest expiry", .ja: "最も近い有効期限", .fr: "Prochaine expiration", .ru: "Ближайший срок"],

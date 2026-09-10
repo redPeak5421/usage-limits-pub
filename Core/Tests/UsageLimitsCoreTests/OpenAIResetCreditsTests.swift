@@ -96,4 +96,45 @@ final class OpenAIResetCreditsTests: XCTestCase {
             }
         }
     }
+
+    func testListsSortAndKeepRowsBeyondThree() throws {
+        let credits = """
+        {"available_count":4,"credits":[
+        {"id":"d","reset_type":"codex_rate_limits","status":"available","is_supported_by_plan":true,"expires_at":"2026-10-04T00:00:00Z"},
+        {"id":"b","reset_type":"codex_rate_limits","status":"available","is_supported_by_plan":true,"expires_at":"2026-10-02T00:00:00Z"},
+        {"id":"a","reset_type":"codex_rate_limits","status":"available","is_supported_by_plan":true,"expires_at":"2026-10-01T00:00:00Z"},
+        {"id":"c","reset_type":"codex_rate_limits","status":"available","is_supported_by_plan":true,"expires_at":"2026-10-03T00:00:00Z"},
+        {"id":"c","reset_type":"codex_rate_limits","status":"available","is_supported_by_plan":true,"expires_at":"2026-10-03T00:00:00Z"}]}
+        """
+        let events = [2, 4, 1, 3, 3].map { "{\"id\":\"used-\($0)\",\"kind\":\"used\",\"occurred_at\":\"2026-09-0\($0)T00:00:00Z\"}" }.joined(separator: ",")
+        let snap = snapshot(credits, history: "{\"events\":[\(events)],\"window_start\":\"2026-08-11T00:00:00Z\",\"as_of\":\"2026-09-10T00:00:00Z\",\"next_cursor\":null}")
+        let summary = try XCTUnwrap(snap.openAIResetCredits)
+        XCTAssertEqual(summary.availableExpirations, (1...4).compactMap { JSONHelp.date("2026-10-0\($0)T00:00:00Z") })
+        XCTAssertEqual(summary.usedDates, (1...4).reversed().compactMap { JSONHelp.date("2026-09-0\($0)T00:00:00Z") })
+        XCTAssertEqual(summary.usedCount, 4)
+        XCTAssertEqual(try JSONDecoder().decode(ProviderSnapshot.self, from: JSONEncoder().encode(snap)), snap)
+    }
+
+    func testSummaryCacheWithoutListsStillDecodes() throws {
+        let data = Data("{\"availableCount\":1,\"historyComplete\":true}".utf8)
+        let summary = try JSONDecoder().decode(OpenAIResetCredits.self, from: data)
+        XCTAssertNil(summary.availableExpirations)
+        XCTAssertNil(summary.usedDates)
+        XCTAssertEqual(summary.availableCount, 1)
+    }
+
+    func testListViewportAndIndependentScrollContract() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("App/Views/OpenAIResetCreditsView.swift"))
+        XCTAssertTrue(source.contains("private static let visibleSlots = 3"))
+        XCTAssertTrue(source.contains("ForEach(Array(dates.enumerated()), id: \\.offset)"))
+        XCTAssertTrue(source.contains(".environment(\\.isScrollEnabled, dates.count > Self.visibleSlots)"))
+        XCTAssertTrue(source.contains("Color.clear.dashboardSceneControlRegion()"))
+    }
+
+    func testInvalidListDateCannotPersist() {
+        var snap = snapshot("{\"available_count\":1}")
+        snap.openAIResetCredits?.usedDates = [Date(timeIntervalSince1970: .infinity)]
+        XCTAssertNotNil(snap.persistenceValidationIssue)
+    }
 }

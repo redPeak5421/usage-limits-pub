@@ -644,9 +644,11 @@ public final class SharedStore: @unchecked Sendable {
                 status: .ok,
                 billingCycle: .monthly,
                 openAIResetCredits: OpenAIResetCredits(
-                    availableCount: 1, expiresAt: now.addingTimeInterval(25 * 86400),
-                    usedCount: 1, windowStart: now.addingTimeInterval(-30 * 86400),
-                    asOf: now, historyComplete: true
+                    availableCount: 5, expiresAt: now.addingTimeInterval(25 * 86400),
+                    usedCount: 5, windowStart: now.addingTimeInterval(-30 * 86400),
+                    asOf: now, historyComplete: true,
+                    availableExpirations: (25...29).map { now.addingTimeInterval(Double($0) * 86400) },
+                    usedDates: (1...5).map { now.addingTimeInterval(-Double($0) * 86400) }
                 )
             ),
             ProviderSnapshot(
