@@ -285,5 +285,5 @@
 - 接手后用用户已有 Chrome 普通窗口的登录会话，在 DevTools Console 直接同源读取：两条接口均 HTTP 200 / trailer grpc-status:0，各 1 次，到期 `2026-09-12T18:49:00Z`。官网 Usage 同步显示可用、2 天后过期。兑换 ID 在浏览器内替换为 `x` 后保存真实响应夹具，Swift 测试逐服务核对次数和完整到期时间。
 - 异常报文回归先复现 12 个失败断言：压缩帧、半包、损坏 protobuf 或非空未知结构被误报 0 次。现在只接收完整 unary 消息，异常跳过并尝试另一服务；不改变已有周额度解析行为。
 - 清理重复实现：ChatGPT/Grok 共用到期列表和分享排序/日期处理，移除不再使用的 gRPC 辅助方法可见性修改，并校正 provider 文档中旧的缺失百分比口径和“再展开”描述。
-- Core 1202 项全绿，XcodeGen 与 UsageLimits scheme 构建通过；iPhone 17 / iOS 26.5 验证 ChatGPT/Claude 折叠等高、Grok 展开次数与日期，并真正保存 Grok 分享 PNG 到照片。真机 WKWebView 登录/Cookie、iPad 多列及 Watch 实机未测。
+- Core 1202 项全绿，XcodeGen 与 UsageLimits scheme 构建通过；iPhone 17 / iOS 26.5 验证 ChatGPT/Claude 折叠等高、Grok 展开次数与日期，并真正保存 Grok 分享 PNG 到照片。iPad Pro 13 英寸 / iOS 26.5 双列平铺实测 11 家缩略卡等高，重置区块均隐藏。真机 WKWebView 登录/Cookie、iPad 分屏及 Watch 实机未测。
 - 本轮计一项功能，z +1。
