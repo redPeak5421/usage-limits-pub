@@ -97,6 +97,12 @@ enum ProviderScripts {
     if (token) { headers['Authorization'] = 'Bearer ' + token; }
     const accountsPromise = __probe('/backend-api/accounts/check/v4-2023-04-27', { headers: headers, noAuth: true });
     const whamPromise = __probe('/backend-api/wham/usage', { headers: headers, noAuth: true });
+    const resetCreditsPromise = __probe('/backend-api/wham/rate-limit-reset-credits', {
+        headers: headers, noAuth: true, timeoutMs: 4000, retry: false
+    });
+    const resetHistoryPromise = __probe('/backend-api/wham/rate-limit-reset-credits/history', {
+        headers: headers, noAuth: true, timeoutMs: 4000, retry: false
+    });
     const subscriptionsPromise = __probe('/backend-api/subscriptions', {
         headers: headers, noAuth: true, timeoutMs: 4000, retry: false
     });
@@ -161,11 +167,13 @@ enum ProviderScripts {
         } catch (e) {}
         return null;
     })();
-    const openAIValues = await Promise.all([accountsPromise, whamPromise, subscriptionsPromise, spendPromise]);
+    const openAIValues = await Promise.all([accountsPromise, whamPromise, subscriptionsPromise, spendPromise, resetCreditsPromise, resetHistoryPromise]);
     probes.accounts_check = openAIValues[0];
     probes.wham_usage = openAIValues[1];
     probes.subscriptions = openAIValues[2];
     if (openAIValues[3]) { probes.spend_monthly = openAIValues[3]; }
+    probes.reset_credits = openAIValues[4];
+    probes.reset_history = openAIValues[5];
     probes.identity = await (async function () {
         function firstEmail(node, depth) {
             if (!node || depth > 6) { return null; }

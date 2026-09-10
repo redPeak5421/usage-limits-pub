@@ -233,6 +233,8 @@ struct ProviderCardView: View {
             return !(snapshot?.metrics.isEmpty ?? true)
                 || !(snapshot?.creditHistory?.isEmpty ?? true)
         }
+        if snapshot?.provider == .openai, snapshot?.isCustom != true,
+           snapshot?.openAIResetCredits != nil { return true }
         return !(snapshot?.metrics.isEmpty ?? true)
     }
 
@@ -435,9 +437,17 @@ struct ProviderCardView: View {
                         metricsList(snap)
                         if isExpanded {
                             unusedMetricsFooter(snap)
+                        } else if sceneTheme != nil, snap.provider == .openai,
+                                  let resets = snap.openAIResetCredits {
+                            OpenAIResetCreditsView(summary: resets, isExpanded: false, compact: true)
                         } else {
                             expandHint(snap)
                         }
+                    }
+                    if !isCustom, snap.provider == .openai, snap.status.isOK,
+                       (sceneTheme == nil || isExpanded || snap.metrics.isEmpty),
+                       let resets = snap.openAIResetCredits {
+                        OpenAIResetCreditsView(summary: resets, isExpanded: isExpanded)
                     }
                     if !isCustom, snap.isAnonymous == true {
                         Button {

@@ -211,6 +211,9 @@ public enum OpenAIParser {
             planExpiresAt: planExpiresAt
         )
         if snapshot.planName == nil, loggedIn { snapshot.planName = "ChatGPT" }
+        if loggedIn {
+            snapshot.openAIResetCredits = OpenAIResetCredits.parse(results: results, now: now)
+        }
         if PlanCatalog.hasListPrice(snapshot.planName) {
             snapshot.billingCycle = .monthly
         }

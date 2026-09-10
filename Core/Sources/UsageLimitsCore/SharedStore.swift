@@ -642,7 +642,12 @@ public final class SharedStore: @unchecked Sendable {
                 ],
                 fetchedAt: now,
                 status: .ok,
-                billingCycle: .monthly
+                billingCycle: .monthly,
+                openAIResetCredits: OpenAIResetCredits(
+                    availableCount: 1, expiresAt: now.addingTimeInterval(25 * 86400),
+                    usedCount: 1, windowStart: now.addingTimeInterval(-30 * 86400),
+                    asOf: now, historyComplete: true
+                )
             ),
             ProviderSnapshot(
                 provider: .grok,

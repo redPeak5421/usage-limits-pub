@@ -168,6 +168,31 @@ chatgpt.com 对匿名访客也返回 200 的 session，甚至带游客 accessTok
 
 已登录但 `accounts_check` / `wham_usage` 非 2xx 时，卡片显示已登录、套餐名 `ChatGPT`、无数值额度。
 
+## Codex 完全重置（2026-09-10 用户提供现网响应）
+
+补充探针 `reset_credits`：GET `/backend-api/wham/rate-limit-reset-credits`；
+`reset_history`：GET `/backend-api/wham/rate-limit-reset-credits/history`。
+沿用 session 后的同源 Cookie / Bearer、`noAuth: true`，并发、各 4 秒且不重试。
+只读，不兑换、不购买。失败不影响已有登录证据或额度窗口。
+
+`available_count` 是可用次数；`credits[]` 中仅 `reset_type=codex_rate_limits`、
+`status=available`、`is_supported_by_plan=true` 且未过期的记录用于到期日期。
+到期使用最早的 `expires_at`，缺失日期不编造；不保存 credit id、头像、标题或用户信息。
+历史只统计 `events[].kind=used`，按事件 id 去重，限定 `window_start…as_of`。
+仅读取首页；`next_cursor` 非空或事件形状不完整时显示“至少 N 次”，绝不称为终身累计。
+`total_earned_count` 不等于已重置次数，不用于历史计数。
+
+快照以独立 `openAIResetCredits` 数字/日期摘要保存，旧快照可缺省。
+ChatGPT/Codex 共用 `.openai` 卡：保留现有额度条，在下方显示可用次数与最近到期，展开显示历史次数和时间范围。
+轮盘 / 螺旋折叠卡以单行次数与到期日替换展开提示，固定卡高不追加完整面板。
+摘要不进入计量排序、小组件额度条或阈值提醒；补充探针失败时不显示该部分，不沿用可能已兑换的旧次数。
+两个补充探针也不参与 `RefreshPolicy` 的真实 HTTP 状态聚合，防止其 200/401 干扰核心超时/5xx 的 last-good 保护。
+没有新增 ChatGPT 对话额度接口，不推算额度。
+
+验证：2026-09-10 在用户既有 Chrome 登录页，以同源 fetch + session Bearer 实测两个 GET 均为 HTTP 200；
+可用 1 次、到期 2026-10-05 04:21:20 UTC；近 30 天 `used` 1 条、`granted` 2 条、`next_cursor=null`。
+响应正文不进入诊断日志，只记录状态码和长度，避免 credit id / 头像等非必要信息留存。
+
 ## 异常数值策略
 
 JSON 布尔不得当作 0/1；`NaN` / `Infinity` / 溢出指数字符串与非有限数直接丢弃。窗口时长、金额整数文案在转 Int 前检查范围，越界用安全占位；绝对/相对重置时间只接受 1970–9999。

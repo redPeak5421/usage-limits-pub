@@ -233,3 +233,11 @@
 - 结果：Core 1172 项全绿，`xcodegen generate` 与 UsageLimits scheme 构建通过。iPhone 17 / iOS 26.5 模拟器逐页核对首页、设置、外观、提醒、服务商、小组件预览、分享预览、自定义向导、侧边键指引；Apple Watch Ultra 3 模拟器核对用量环与设置。跟随系统（`-AppleLanguages "(zh-Hant-TW)"`）与显式选繁体两条路径都正确，简体各页逐张比对无回归。
 - 剥离自查：scrub 到临时目录预演一遍，繁体条目完整保留、二次剥离零改动；剥离后的 Core 除 `RepoHygieneTests`（需要 git 仓库才能跑）外全绿。
 - 边界：App Store Connect 的商店文案还没加繁体本地化；真机未验证。
+
+## 2026-09-10：1.5.588 ChatGPT / Codex 重置摘要
+
+- 接入同源只读 `rate-limit-reset-credits` 与 `/history`，4 秒补充探针；卡片显示可用次数、最近到期、时间范围内的已使用次数。历史去重，分页未完整或数据漂移时显示“至少”；不推算新的对话额度。
+- 摘要独立于 metrics，兼容旧快照；不存事件 ID、头像、用户字段，诊断不预览响应正文。补充接口不参与登录判定、额度阈值与 last-good HTTP 状态聚合。
+- 审查中复现“主探针全部超时/503、补充接口200/401”使旧快照丢失的四种组合，新增回归后修复；场景折叠卡改为单行摘要，避免固定高度裁切。仅重置摘要的卡片也可展开。
+- 验证：用户现有 Chrome 登录页同源 GET 两接口均200，可用1次、到期2026-10-05 04:21 UTC，近30天 used 1条、granted 2条、无下一页。仅读取，没有兑换或购买。Core 1179项全绿（含 LoginConfirmTests），XcodeGen 与 UsageLimits scheme 构建通过；iPhone 17 / iOS 26.5 模拟器核对平铺展开、轮盘/螺旋折叠显示，独立代码复核通过。
+- 设备边界：未进行真机 WKWebView 登录与 Cookie/CORS 实测；Chrome 会话验证不等同于真机验证。未实测 Widget/Watch（摘要不进入其额度展示）。

@@ -1,0 +1,10 @@
+{
+  "credits": [
+    {"id":"fixture-available","reset_type":"codex_rate_limits","is_supported_by_plan":true,"status":"available","expires_at":"2026-10-05T04:21:20.321054Z"},
+    {"id":"fixture-used","reset_type":"codex_rate_limits","is_supported_by_plan":true,"status":"redeemed","expires_at":"2026-09-20T00:00:00Z"},
+    {"id":"fixture-unsupported","reset_type":"codex_rate_limits","is_supported_by_plan":false,"status":"available","expires_at":"2026-09-21T00:00:00Z"},
+    {"id":"fixture-expired","reset_type":"codex_rate_limits","is_supported_by_plan":true,"status":"available","expires_at":"2026-09-01T00:00:00Z"}
+  ],
+  "available_count":1,
+  "total_earned_count":0
+}

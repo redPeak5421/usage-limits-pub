@@ -33,6 +33,7 @@ public enum DiagnosticRedactor {
     public static func shouldOmitBody(providerRaw: String, probeName: String) -> Bool {
         if providerRaw == ProviderID.longcat.rawValue && probeName == "user" { return true }
         if providerRaw == ProviderID.openai.rawValue && probeName == "session" { return true }
+        if providerRaw == ProviderID.openai.rawValue && ["reset_credits", "reset_history"].contains(probeName) { return true }
         if providerRaw == ProviderID.deepseek.rawValue && probeName == "current" { return true }
         if providerRaw == ProviderID.deepseek.rawValue && probeName == "api_keys" { return true }
         if providerRaw == ProviderID.kimi.rawValue && probeName == "user" { return true }

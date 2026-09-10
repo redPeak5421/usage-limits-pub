@@ -396,6 +396,8 @@ final class DashboardSceneSourceTests: XCTestCase {
                 return !(snapshot?.metrics.isEmpty ?? true)
                     || !(snapshot?.creditHistory?.isEmpty ?? true)
             }
+            if snapshot?.provider == .openai, snapshot?.isCustom != true,
+               snapshot?.openAIResetCredits != nil { return true }
             return !(snapshot?.metrics.isEmpty ?? true)
         }
         """
