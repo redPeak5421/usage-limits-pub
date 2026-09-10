@@ -4,14 +4,14 @@ import Foundation
 public enum TimeFormat {
     private static let invalidPlaceholder = "—"
 
-    /// Fixed Gregorian calendar date in the user's time zone, independent of display language.
-    public static func yearMonthDay(_ date: Date, timeZone: TimeZone = .autoupdatingCurrent) -> String {
+    /// Fixed Gregorian date and 24-hour time with seconds in the user's time zone.
+    public static func localDateTime(_ date: Date, timeZone: TimeZone = .autoupdatingCurrent) -> String {
         guard JSONHelp.isSafeDate(date) else { return invalidPlaceholder }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = timeZone
-        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return formatter.string(from: date)
     }
 

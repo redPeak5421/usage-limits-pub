@@ -49,7 +49,7 @@ struct OpenAIResetCreditsView: View {
     }
 
     private func expiryText(_ date: Date) -> String {
-        L10n.tr("openai.reset.expiryDate", lang) + " " + TimeFormat.yearMonthDay(date, timeZone: timeZone)
+        L10n.tr("openai.reset.expiryDate", lang) + " " + TimeFormat.localDateTime(date, timeZone: timeZone)
     }
 
     private func expiryRow(_ date: Date) -> some View {
@@ -57,7 +57,7 @@ struct OpenAIResetCreditsView: View {
             Text(L10n.tr("openai.reset.expiryDate", lang))
                 .foregroundStyle(.tertiary)
             Spacer(minLength: 8)
-            Text(TimeFormat.yearMonthDay(date, timeZone: timeZone))
+            Text(TimeFormat.localDateTime(date, timeZone: timeZone))
             .monospacedDigit()
             .foregroundStyle(.secondary)
             .layoutPriority(1)

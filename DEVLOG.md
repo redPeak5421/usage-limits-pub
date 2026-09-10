@@ -262,3 +262,8 @@
 
 - 可用重置到期日期统一 `yyyy-MM-dd`，折叠与展开共用格式化入口，按 SwiftUI 当前设备时区转换。固定公历与 POSIX 数字格式，避免语言设置改变年月日顺序，也避免跨年周历年份误差。
 - Core 1185项全绿，新增上海/洛杉矶跨日、跨年和无效日期验证；XcodeGen、UsageLimits scheme 构建与 iPhone 17 / iOS 26.5 截图检查通过。真机切换时区未实测。
+
+## 2026-09-10：1.5.593 重置到期显示完整时间
+
+- 日期格式按用户要求调整为 `yyyy-MM-dd HH:mm:ss`，24小时制、精确到秒，继续按设备当前时区转换。展开与折叠共用 `TimeFormat.localDateTime`。
+- Core 1185项全绿，跨时区21点、凌晨00点与秒补零测试通过；XcodeGen、UsageLimits scheme 编译及 iPhone 17 / iOS 26.5 完整时间无截断截图核对通过。真机时区切换未实测。
