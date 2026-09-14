@@ -295,3 +295,12 @@
 - 回归先复现两开关耦合及新字段未保存的问题，再验证两家供应商、展开 / 折叠、四种开关组合及旧设置迁移；Core 1204 项通过，XcodeGen 与 UsageLimits scheme 构建通过。
 - iPhone 17 / iOS 26.5 用演示数据交叉切换「明细关 / 重置开」与「明细开 / 重置关」，两种状态均实际保存 PNG 到照片并检查完整图片，次数与日期随独立开关显示 / 隐藏。真机、iPad 与系统分享扩展本轮未测。
 - 本轮计一项功能，z +1。
+
+## 2026-09-14 · 订阅过期不再命名套餐（1.5.598）
+
+- 现象：Grok 账号订阅已于 2026-09-13 到期，卡片仍显示 `SuperGrok Heavy / 本周限额 0%`，刷新多少次都一样。真机诊断：`subscriptions` 返回两条 `SUBSCRIPTION_STATUS_INACTIVE`（一条 `billingPeriodEnd` 已过），`rate_limits` 已是免费档（auto 7 / fast 30 / expert 7 每天，heavy 20 次 2 小时），`weekly` gRPC 只剩周期。
+- 原因：不是保留旧快照——每轮都是新解析、结果相同。`GrokParser` 取任意一条 `tier` 不看 `status` / `billingPeriodEnd`；`heavy` 档存在即判 Heavy，而游客态同样返回 heavy 20 次；周额度报文没有百分比时本地补 0% 并挤掉短期次数。`RefreshPolicy` 只在探针无真实 HTTP 或全为瞬时失败时保留旧快照，401/403 才判未登录，与本案无关。
+- 处理：Grok 只取现行订阅记录（`billingPeriodEnd` 未过且 `status` 不含 INACTIVE / EXPIRED；CANCELED 只在账期已过或没给账期时算失效），全部失效时按已登录免费账号展示 `rate_limits` 四档、不置游客态、不查重置券、也不采信 `credits` 残留的 `subscription_tier`；去掉「heavy 档存在即 Heavy」；无套餐时周额度只在线上给出百分比或非零产品占比才替换短期次数。顺带修掉一个未上报的问题：已登录的免费 Grok 账号此前被标成游客，登录确认页会一直提示「检测到游客额度」。同类扫描全部解析器（带套餐名的 19 个）：智谱按结束时间 + 失效词黑名单判现行记录（CANCEL 只在没给结束时间时算失效，取消续费期内仍可用，与 Grok / Kimi 同规则），去掉「没有 VALID 记录就取第一条」的回落，`quota` 的套餐名只在订阅接口没有记录时兜底；Kimi `currentEndTime` / `nextBillingTime` 已过不写套餐（`CANCEL` 只是关续费），列表兜底跳过已结束记录；T3 Chat `currentPeriodEnd` 已过不写套餐；Augment `billingPeriodEnd` 已过、Abacus `nextBillingDate` 已过不写套餐（两者只有账期字段可判，边界已记入目录文件）。六份 provider 文档同轮更新。
+- 未改：ChatGPT、MiMo 本就按 `has_active_subscription` / `expired` 过滤（参照实现）；Cursor `membershipType`、Claude 组织档位、StepFun `plan_status`、Gemini 枚举、MiniMax `combo` 打分与 OpenCode `isBlack` 的响应里没有可判到期的字段，按现有官网口径保留；无套餐名的解析器不涉及。目录门禁 `ProviderAvailability` 未动，首页可见的仍是原 11 家。
+- 验证：先用真机形状复现 Grok 解析为 `ok / SuperGrok Heavy`；新增 `SubscriptionExpiryTests`（16 项）与重置券一项，先红后绿；独立评审后补上智谱 `quota` 兜底捞回、Grok credits 残留档位、全 0% 产品占比三处；Core 1221 项全绿，XcodeGen 与 UsageLimits scheme 构建通过。真机过期账号复验、其它五家过期账号的真实响应形状未取得，属代码层面同类防御。
+- 本轮计一项修复，z +1。

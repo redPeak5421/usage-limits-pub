@@ -33,7 +33,7 @@
 
 ### subscriptions 套餐枚举
 
-响应里任意层级的 `tier` 字段（如 `{"subscriptions":[{"tier":"SUPER_GROK","status":"ACTIVE"}]}`），取第一个，转大写后按顺序匹配：
+响应里任意层级带 `tier` 的记录（如 `{"subscriptions":[{"tier":"SUPER_GROK","status":"ACTIVE"}]}`），数组内按出现顺序取**第一条现行记录**的 `tier`，转大写后按顺序匹配。现行 = `billingPeriodEnd` 未过，且 `status` 不含 `INACTIVE` / `EXPIRED`；`CANCELED` / `CANCELLED` 只在账期已过或没给账期时算失效（取消续费、期内仍可用），`cancelAtPeriodEnd = true` 同理；两个字段都没有的记录照旧采信。订阅结束后站点仍会把历史记录留在列表里（2026-09-14 真机：过期账号返回两条 `SUBSCRIPTION_STATUS_INACTIVE`，其中一条 `billingPeriodEnd` 已过一天），全部失效 → 没有套餐，但有记录说明已登录、不是游客：展示 `rate_limits` 免费档次数，`isAnonymous` 不置位，不查重置券，`credits` / `weekly` 里残留的 `subscription_tier` 也不再采信。
 
 | `tier` 含 | 展示名 | 月标价 |
 |---|---|---|
@@ -45,7 +45,7 @@
 | `PREMIUM` | X Premium+ | $40 |
 | 其它 | 原值首字母大写 | （无标价） |
 
-拿到 subscriptions 套餐后再用 `rate_limits` 总额度反推校准：`heavy` 档存在、或 `auto` 总数 150、或 `fast` 总数 400 → SuperGrok Heavy（覆盖）；`auto` 50 或 `fast` 140 → SuperGrok（仅在 subscriptions 未给出时采用）。`credits` / `weekly` 若以 JSON 返回且含 `subscription_tier` / `subscriptionTier`，其值优先于 subscriptions（`HEAVY` → SuperGrok Heavy，`SUPER`+`PLUS` → SuperGrok Plus，`LITE` → SuperGrok Lite，含 `SuperGrok` 原样，其余走上表）。有标价的套餐 `billingCycle` 固定为 `monthly`。
+拿到 subscriptions 套餐后再用 `rate_limits` 总额度反推校准：`auto` 总数 150、或 `fast` 总数 400 → SuperGrok Heavy（覆盖；`heavy` 档如今游客与免费账号也有 20 次 / 2 小时，2026-09-14 起不再作为 Heavy 证据）；`auto` 50 或 `fast` 140 → SuperGrok（仅在 subscriptions 未给出时采用）。`credits` / `weekly` 若以 JSON 返回且含 `subscription_tier` / `subscriptionTier`，其值优先于 subscriptions——但 subscriptions 有记录且全部失效时不采信（`HEAVY` → SuperGrok Heavy，`SUPER`+`PLUS` → SuperGrok Plus，`LITE` → SuperGrok Lite，含 `SuperGrok` 原样，其余走上表）。有标价的套餐 `billingCycle` 固定为 `monthly`。
 
 ### credits（JSON）
 
@@ -193,6 +193,7 @@ message ConsumerGetRemainingResetsResp { repeated ConsumerResetToken tokens = 10
 
 - 拿到周额度（`credits` 或 `weekly` 任一解析成功）：指标替换为周期标签（id `weekly`，标签按上表的 `currentPeriod.type` 取「今日/本周/本月限额」，detail「已使用」，重置时间）+ 占比 > 0 的产品各一行（id `weekly.<code>`）；`rate_limits` 的短期次数不展示。
 - 有套餐但没拿到周额度：指标为空（付费用户不展示 2 小时次数）。
+- 有订阅记录但全部失效（已登录的免费账号）：展示 `rate_limits` 四档短期次数，套餐名空、无标价、`isAnonymous` 不置位。此时周额度报文只剩周期、百分比是本地补的 0%（gRPC 路径）→ 不替换短期次数；线上真给了百分比或非零产品占比才替换。
 - 没有套餐（游客）：展示 `rate_limits` 的四档短期次数，套餐名「游客额度」，快照 `isAnonymous = true`，无标价，卡片保留登录入口。
 - 用量额度重置以独立摘要 `grokUsageResets` 保存（次数 + 到期日期数组），旧快照可缺省。展开 Grok 卡时在额度条下方显示「可用重置 N 次」及到期正序的三行日期，超出部分内部滚动；与 ChatGPT 共用列表布局。零次只显示总数、不显示日期。**只在展开态渲染**，折叠卡不追加行、不改卡高。分享由独立的「重置次数」开关控制次数和最多三条最早到期记录，与「明细」互不影响；日期按设备时区显示 `yyyy-MM-dd HH:mm:ss`。新设置默认关闭，旧设置沿用原「明细」选择迁移，此后独立保存；仅选中 Grok / ChatGPT 的内置账号时显示此开关。
 - 该摘要不进入计量排序、不进小组件额度条、不参与阈值提醒；两条探针都没给出结果时整块不显示。

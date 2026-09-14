@@ -9,6 +9,7 @@ public enum ZhipuParser {
         var planExpiresAt: Date?
         var billingCycle: BillingCycle?
         var planProductID: String?
+        var hasSubscriptionRows = false
         var metrics: [UsageMetric] = []
         var loggedIn = false
         // 信封按探针隔离：登录态信封优先，不让先出现的业务 500 盖掉后面的 401。
@@ -41,8 +42,14 @@ public enum ZhipuParser {
             } else {
                 rows = []
             }
-            if let item = rows.first(where: { statusValid($0["status"]) }) ?? rows.first {
+            if !rows.isEmpty {
                 loggedIn = true
+                hasSubscriptionRows = true
+            }
+            // 只认现行记录（有效期未过、status 不是失效词），VALID / ACTIVE / SUCCESS 的优先；
+            // 全部失效时不回落到第一条（那是已到期的历史订阅）。
+            let current = rows.filter { isCurrentRow($0, now: now) }
+            if let item = current.first(where: { statusValid($0["status"]) }) ?? current.first {
                 planProductID = JSONHelp.string(item["productId"]) ?? JSONHelp.string(item["product_id"])
                 let sku = PlanCatalog.zhipuSKU(planProductID)
                 plan = sku?.plan ?? planLabel(JSONHelp.string(item["productName"]) ?? JSONHelp.string(item["name"]))
@@ -65,7 +72,8 @@ public enum ZhipuParser {
            let data = root["data"] as? [String: Any] {
             loggedIn = true
             // 套餐名字段覆盖面：planName / plan / plan_type / packageName / level 五选一。
-            if plan == nil, let raw = planNameValue(data) {
+            // 只在订阅接口没给任何记录时兜底；有记录但全失效就是过期，不许从这里捞回。
+            if plan == nil, !hasSubscriptionRows, let raw = planNameValue(data) {
                 plan = planLabel(raw)
             }
             metrics.append(contentsOf: quotaMetrics(data["limits"], now: now))
@@ -146,6 +154,22 @@ public enum ZhipuParser {
     private static func statusValid(_ any: Any?) -> Bool {
         let s = (JSONHelp.string(any) ?? "").uppercased()
         return s == "VALID" || s == "ACTIVE" || s == "SUCCESS"
+    }
+
+    /// 与 Grok 同规则：结束时间已过即失效；INVALID / EXPIRED 等失效词绝对失效；
+    /// CANCEL 只是关了续费，有未过的结束时间仍现行、没给结束时间才算失效。
+    /// 未知状态（形状漂移）不当失效；空串等于没有状态。
+    private static func isCurrentRow(_ item: [String: Any], now: Date) -> Bool {
+        let end = parseValidEnd(JSONHelp.string(item["valid"]))
+            ?? JSONHelp.date(item["nextRenewTime"])
+            ?? JSONHelp.date(item["expireTime"])
+        if let end, end <= now { return false }
+        let status = (JSONHelp.string(item["status"]) ?? "").trimmingCharacters(in: .whitespaces).uppercased()
+        for word in ["INVALID", "EXPIRED", "REFUND", "CLOSED", "FAIL", "INACTIVE"] where status.contains(word) {
+            return false
+        }
+        if status.contains("CANCEL") { return end != nil }
+        return true
     }
 
     private static func planLabel(_ raw: String?) -> String? {

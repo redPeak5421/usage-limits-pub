@@ -46,8 +46,11 @@ public enum AbacusParser {
         var resetsAt: Date?
         if let billing = results["billing"], billing.isOK,
            case let .success(billingResult) = envelope(billing.body) {
-            planName = planLabel(billingResult["currentTier"] as? String)
             resetsAt = isoDate(billingResult["nextBillingDate"] as? String)
+            // 下次扣费日已过 = 没续上，`currentTier` 是残留。
+            if resetsAt.map({ $0 > now }) ?? true {
+                planName = planLabel(billingResult["currentTier"] as? String)
+            }
         }
 
         let used = total - remaining

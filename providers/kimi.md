@@ -118,7 +118,7 @@
 
 - 任一探针 401 / 403 → `needsLogin`。
 - 未判定为已登录且有非 2xx 探针 → 走 `ProbeResult.failureStatus`（`HTTP n` / 请求超时 / 网络错误）。
-- 套餐：`subscription.goods.title`（或 `membershipLevel`，`LEVEL_INTERMEDIATE` 视为 Allegretto）映射 Moderato / Allegretto / Allegro / Vivace → `Kimi Code …`。到期取 `currentEndTime`，缺则 `nextBillingTime`。`goods.billingCycle.timeUnit` 为 `TIME_UNIT_YEAR` → `yearly`，否则有标价即 `monthly`。
+- 套餐：`subscription.goods.title`（或 `membershipLevel`，`LEVEL_INTERMEDIATE` 视为 Allegretto）映射 Moderato / Allegretto / Allegro / Vivace → `Kimi Code …`。到期取 `currentEndTime`，缺则 `nextBillingTime`；**到期已过 → 没有现行套餐**，套餐 / 到期 / 周期都不写（2026-09-14 起）。`status` 为 `SUBSCRIPTION_STATUS_CANCEL` 只表示关闭续费，期内仍有效（fixture 即此形状）。`subscriptions` 列表同样跳过已结束的记录，取第一条未结束的。`goods.billingCycle.timeUnit` 为 `TIME_UNIT_YEAR` → `yearly`，否则有标价即 `monthly`。
 
 ## 标价（`PlanCatalog.swift`）
 

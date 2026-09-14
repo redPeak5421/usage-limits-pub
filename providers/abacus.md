@@ -92,7 +92,7 @@ detail:      已用 <used> / <total> points
 
 - `nextBillingDate` 只接 ISO8601；兼容带小数秒与不带小数秒两种。非法值、早于 1970 或晚于 9999-12-31 的日期直接丢弃 `resetsAt`，不影响额度，也不让可选账单日把整张快照判成不可落盘。
 - `currentTier` 去首尾空白；已知 `free` / `basic` / `pro` / `team` / `enterprise` 按英文标题格式展示（如 `pro` → `Pro`），未知非空值保留原文。不补造「Abacus」前缀，也不据此造标价。
-- `resetsAt = nextBillingDate`；`planName = currentTier`；`billingCycle` / `planExpiresAt` 恒为 `nil`。
+- `resetsAt = nextBillingDate`；`planName = currentTier`，但 `nextBillingDate` 已过时没续上、`currentTier` 是残留，不写套餐（2026-09-14 起；已知边界同 Augment：服务端尚未滚动账期时会短暂没有套餐名，只影响徽章）；`billingCycle` / `planExpiresAt` 恒为 `nil`。
 
 ## 状态分档
 

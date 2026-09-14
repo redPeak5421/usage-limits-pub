@@ -78,8 +78,10 @@ public enum T3ChatParser {
             ))
         }
 
-        let rawPlan = trimmedString(subscription?["productName"])
-            ?? trimmedString(customer["subTier"])
+        // `subscription.currentPeriodEnd` 已过：订阅已结束，productName / subTier 都是残留。
+        let subscriptionEnded = safeDate(subscription?["currentPeriodEnd"]).map { $0 <= now } ?? false
+        let rawPlan = subscriptionEnded ? nil
+            : trimmedString(subscription?["productName"]) ?? trimmedString(customer["subTier"])
         return ProviderSnapshot(
             provider: .t3chat,
             planName: planLabel(rawPlan),

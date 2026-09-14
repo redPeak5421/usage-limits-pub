@@ -100,7 +100,7 @@ resetsAt:    subscription.currentPeriodEnd
 
 ### 套餐名
 
-原值优先 `subscription.productName`，缺失 / 空白时回落 `subTier`。去首尾空白，再按空格、连字符、下划线分词并标题化（如 `pro` → `Pro`、`team-plan` → `Team Plan`）；不补造 T3 前缀，不据此造标价。
+原值优先 `subscription.productName`，缺失 / 空白时回落 `subTier`。`subscription.currentPeriodEnd` 已过时订阅已结束，两者都是残留、不写套餐（2026-09-14 起）；主窗口与次窗口不受影响。去首尾空白，再按空格、连字符、下划线分词并标题化（如 `pro` → `Pro`、`team-plan` → `Team Plan`）；不补造 T3 前缀，不据此造标价。
 
 ## 登录与风控状态
 

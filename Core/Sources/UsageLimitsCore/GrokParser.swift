@@ -65,20 +65,33 @@ public enum GrokParser {
             }
         }
 
+        // 订阅记录里会残留 INACTIVE / 已过账期的历史条目（2026-09-14 真机：过期账号仍列出两条），
+        // 只有现行记录才能命名套餐；有记录但都失效 = 已登录的免费账号，不是游客。
+        var hasSubscriptionRecords = false
+        var subscriptionExpired = false
         if let subs = results["subscriptions"], subs.isOK {
-            plan = planLabel(from: subs.body)
-            if plan != nil { loggedIn = true }
+            let records = subscriptionRecords(from: subs.body)
+            hasSubscriptionRecords = !records.isEmpty
+            let current = records.first(where: { isCurrentSubscription($0, now: now) })
+            subscriptionExpired = hasSubscriptionRecords && current == nil
+            plan = current.flatMap { planLabel(tier: JSONHelp.string($0["tier"])) }
+            if hasSubscriptionRecords { loggedIn = true }
         }
         if plan != nil, let inferred = inferPlan(from: metrics) {
             plan = mergePlan(subscription: plan, inferred: inferred)
         }
-        if let creditsPlan = planFromCredits(results) {
+        // 订阅接口有记录但全部失效 = 明确过期；credits / weekly 里残留的 subscription_tier 不能把套餐捞回来。
+        if !subscriptionExpired, let creditsPlan = planFromCredits(results) {
             plan = creditsPlan
             loggedIn = true
         }
 
         // 官网 Settings → Usage 只展示共享周额度；付费套餐不再列出 /rest/rate-limits 的 2 小时次数。
-        if let weekly = weeklyCredits(from: results, now: now) {
+        // 没有现行套餐时，周额度报文只剩周期（本地补出来的 0%）不能挤掉免费档 / 游客的短期次数；
+        // 线上真给了百分比或非零产品占比才展示（渲染层也只画 > 0 的产品行）。
+        if let weekly = weeklyCredits(from: results, now: now),
+           plan != nil || !parsedRateLimit || weekly.percentIsWirePublished
+            || weekly.products.contains(where: { $0.usagePercent > 0 }) {
             loggedIn = true
             metrics = weeklyMetrics(weekly)
         } else if plan != nil {
@@ -118,7 +131,7 @@ public enum GrokParser {
         // 订阅信息为空时标注为游客数据，卡片上保留登录入口。
         var isAnonymous: Bool?
         var planName = plan
-        if loggedIn, plan == nil {
+        if loggedIn, plan == nil, !hasSubscriptionRecords {
             isAnonymous = true
             planName = "游客额度"
         }
@@ -133,8 +146,8 @@ public enum GrokParser {
             isAnonymous: isAnonymous,
             billingCycle: cycle
         )
-        // 重置券只发给订阅账号；游客态和未登录都不查，免得把 leftover 次数说成现在还有。
-        if loggedIn, isAnonymous != true {
+        // 重置券只发给订阅账号；游客态、订阅已失效和未登录都不查，免得把 leftover 次数说成现在还有。
+        if loggedIn, plan != nil {
             snapshot.grokUsageResets = GrokUsageResets.parse(results: results, now: now)
         }
         return snapshot
@@ -201,10 +214,30 @@ public enum GrokParser {
         return "\(model) \(kindLabel)"
     }
 
-    private static func planLabel(from body: String) -> String? {
-        guard let dict = JSONHelp.object(body) else { return nil }
-        let tiers = JSONHelp.dictsContainingKey("tier", in: dict).compactMap { JSONHelp.string($0.dict["tier"]) }
-        guard let raw = (tiers.first ?? JSONHelp.string(dict["tier"]))?.uppercased() else { return nil }
+    /// 响应里所有带 `tier` 的订阅记录（任意层级；数组内按出现顺序）。
+    private static func subscriptionRecords(from body: String) -> [[String: Any]] {
+        guard let dict = JSONHelp.object(body) else { return [] }
+        return JSONHelp.dictsContainingKey("tier", in: dict).map(\.dict)
+    }
+
+    /// 现行订阅：`billingPeriodEnd` 未过，且 `status` 不含 INACTIVE / EXPIRED；
+    /// CANCELED / CANCELLED 只在账期已过或没给账期时算失效（取消续费、期内仍可用）。
+    /// 两个字段都没有的记录照旧采信（老 fixture / 形状漂移）。
+    private static func isCurrentSubscription(_ record: [String: Any], now: Date) -> Bool {
+        let end = JSONHelp.date(record["billingPeriodEnd"])
+        if let end, end <= now { return false }
+        guard let status = JSONHelp.string(record["status"])?.uppercased() else { return true }
+        if status.contains("INACTIVE") || status.contains("EXPIRED") { return false }
+        if status.contains("CANCELED") || status.contains("CANCELLED") {
+            // 上面已排除过期账期：有账期即仍在期内；没给账期的取消记录按失效处理。
+            if let end { return end > now }
+            return false
+        }
+        return true
+    }
+
+    private static func planLabel(tier: String?) -> String? {
+        guard let raw = tier?.uppercased() else { return nil }
         if raw.contains("PREMIUM_PLUS") { return "X Premium+" }
         if raw.contains("SUPER_GROK_PRO") || raw.contains("HEAVY") { return "SuperGrok Heavy" }
         if raw.contains("SUPER_GROK_PLUS") || (raw.contains("PLUS") && raw.contains("SUPER")) { return "SuperGrok Plus" }
@@ -215,12 +248,13 @@ public enum GrokParser {
     }
 
     /// 用 /rest/rate-limits 的总额度形态校准套餐（比内部枚举更接近官网档位）。
+    /// `heavy` 档如今游客和免费账号也有（20 次 / 2 小时），不再当 Heavy 的证据。
     private static func inferPlan(from metrics: [UsageMetric]) -> String? {
         let totals = Dictionary(uniqueKeysWithValues: metrics.compactMap { metric -> (String, Double)? in
             guard let total = metric.total else { return nil }
             return (metric.id, total)
         })
-        if totals["heavy"] != nil || totals["auto"] == 150 || totals["fast"] == 400 {
+        if totals["auto"] == 150 || totals["fast"] == 400 {
             return "SuperGrok Heavy"
         }
         if totals["auto"] == 50 || totals["fast"] == 140 {
@@ -254,7 +288,7 @@ public enum GrokParser {
         if upper.contains("SUPER") && upper.contains("PLUS") { return "SuperGrok Plus" }
         if upper.contains("LITE") { return "SuperGrok Lite" }
         if raw.localizedCaseInsensitiveContains("SuperGrok") { return raw }
-        return planLabel(from: #"{"tier":"\#(raw)"}"#) ?? raw
+        return planLabel(tier: raw) ?? raw
     }
 
     /// weekly（gRPC-Web）探针的结果码。状态非 0 时不解析 payload，也**不**据此判未登录：

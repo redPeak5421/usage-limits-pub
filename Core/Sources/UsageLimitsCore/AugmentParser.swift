@@ -15,8 +15,11 @@ public enum AugmentParser {
         var resetsAt: Date?
         if let subscription = results["subscription"], subscription.isOK,
            let root = JSONHelp.object(subscription.body) {
-            planName = planLabel(JSONHelp.string(root["planName"]))
             resetsAt = finiteDate(root["billingPeriodEnd"])
+            // 账期已过就没有现行套餐；重置时间照旧回传给 Credits 条。
+            if resetsAt.map({ $0 > now }) ?? true {
+                planName = planLabel(JSONHelp.string(root["planName"]))
+            }
         }
 
         var metrics: [UsageMetric] = []

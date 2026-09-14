@@ -247,4 +247,15 @@ final class GrokUsageResetsTests: XCTestCase {
         XCTAssertTrue(script.contains("/prod_mc_billing.ConsumerUiSvc/GetRemainingResets"))
         XCTAssertTrue(script.contains("/grok_api_v2.GrokBuildBilling/GetRemainingResets"))
     }
+    /// 订阅已失效的账号：重置券探针可能还返回 leftover 条目，不能把过期账号说成还有重置。
+    func testInactiveSubscriptionDoesNotCarryResetCounts() {
+        let snap = GrokParser.parse(results: [
+            "rate_limits": ProbeResult(status: 200, body: #"{"results":[{"modelName":"auto","status":200,"body":{"remainingQueries":7,"totalQueries":7,"windowSizeSeconds":86400}}]}"#),
+            "subscriptions": ProbeResult(status: 200, body: #"{"subscriptions":[{"tier":"SUPER_GROK_PRO","status":"SUBSCRIPTION_STATUS_INACTIVE"}]}"#),
+            "resets": ProbeResult(status: 200, body: consumerBody([("token-a", day(5))]))
+        ], now: now)
+        XCTAssertEqual(snap.status, .ok)
+        XCTAssertNil(snap.planName)
+        XCTAssertNil(snap.grokUsageResets)
+    }
 }

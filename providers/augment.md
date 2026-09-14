@@ -55,7 +55,7 @@
 - **总量**：`usageUnitsAvailable > 0` → 它就是 `total`；否则 `usageUnitsRemaining + usageUnitsConsumedThisBillingCycle`；两者都缺 → `total` 为 nil。
 - **百分比**：`total > 0` 时优先 `consumed / total × 100`，`consumed` 缺失则 `(total − remaining) / total × 100`；结果钳 0–100。`total` 为 0 / nil 时不出百分比。
 - **指标**：`UsageMetric(id: "credits", label: "Credits", usedPercent:, remaining: usageUnitsRemaining, total:, resetsAt: billingPeriodEnd, detail: usageBalanceStatus（非空时）, pinned: true)`。`pinned` 保证 0% 也露出来。
-- **套餐**：`planName` → `Augment <planName>`；常见小写档位（`free` / `community` / `indie` / `pro` / `team` / `enterprise`）规范成首字母大写。`billingCycle` 留空（无标价，标签无意义）。
+- **套餐**：`planName` → `Augment <planName>`；常见小写档位（`free` / `community` / `indie` / `pro` / `team` / `enterprise`）规范成首字母大写。`billingCycle` 留空（无标价，标签无意义）。`billingPeriodEnd` 已过时账期已结束、未续费，不写套餐（2026-09-14 起）；Credits 条的 `resetsAt` 照旧回传。已知边界：该字段同时是下个账期起点，服务端尚未滚动账期时会短暂没有套餐名，只影响徽章不影响额度；没有过期账号的真实响应可核，接口若另给状态字段再改按状态判。
 - **状态分档**：
   - 产出了 Credits 指标 → `.ok`（此时 `/api/subscription` 401/403/超时都只丢套餐，不降级）。
   - `results` 为空 → `.error("未获取到任何响应")`。

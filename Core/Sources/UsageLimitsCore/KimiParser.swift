@@ -24,21 +24,25 @@ public enum KimiParser {
             let goods = node?["goods"] as? [String: Any]
             if node != nil || goods != nil {
                 loggedIn = true
-                plan = planLabel(JSONHelp.string(goods?["title"]) ?? JSONHelp.string(goods?["membershipLevel"]))
-                planExpiresAt = JSONHelp.date(node?["currentEndTime"]) ?? JSONHelp.date(node?["nextBillingTime"])
-                billingCycle = cycleFromGoods(goods)
+                // `status` CANCEL 只是关了续费，期内仍有效；到期与否只看 currentEndTime / nextBillingTime。
+                if !subscriptionEnded(node, now: now) {
+                    plan = planLabel(JSONHelp.string(goods?["title"]) ?? JSONHelp.string(goods?["membershipLevel"]))
+                    planExpiresAt = JSONHelp.date(node?["currentEndTime"]) ?? JSONHelp.date(node?["nextBillingTime"])
+                    billingCycle = cycleFromGoods(goods)
+                }
             }
         }
 
         if plan == nil, let list = results["subscriptions"], list.isOK,
            let root = JSONHelp.object(list.body),
-           let rows = root["subscriptions"] as? [[String: Any]],
-           let first = rows.first {
-            loggedIn = true
-            let goods = first["goods"] as? [String: Any]
-            plan = planLabel(JSONHelp.string(goods?["title"]))
-            planExpiresAt = JSONHelp.date(first["currentEndTime"])
-            if billingCycle == nil { billingCycle = cycleFromGoods(goods) }
+           let rows = root["subscriptions"] as? [[String: Any]] {
+            if !rows.isEmpty { loggedIn = true }
+            if let first = rows.first(where: { !subscriptionEnded($0, now: now) }) {
+                let goods = first["goods"] as? [String: Any]
+                plan = planLabel(JSONHelp.string(goods?["title"]))
+                planExpiresAt = JSONHelp.date(first["currentEndTime"])
+                if billingCycle == nil { billingCycle = cycleFromGoods(goods) }
+            }
         }
 
         if let usages = results["usages"], usages.isOK,
@@ -151,6 +155,14 @@ public enum KimiParser {
     private static func cycleFromGoods(_ goods: [String: Any]?) -> BillingCycle? {
         let cycle = goods?["billingCycle"] as? [String: Any]
         return BillingCycle.parse(JSONHelp.string(cycle?["timeUnit"]))
+    }
+
+    /// 当前周期已结束（`currentEndTime`，缺则 `nextBillingTime`）就没有现行套餐；两者都缺照旧采信。
+    private static func subscriptionEnded(_ node: [String: Any]?, now: Date) -> Bool {
+        guard let end = JSONHelp.date(node?["currentEndTime"]) ?? JSONHelp.date(node?["nextBillingTime"]) else {
+            return false
+        }
+        return end <= now
     }
 
     private static func planLabel(_ raw: String?) -> String? {

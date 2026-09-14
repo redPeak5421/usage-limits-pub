@@ -64,7 +64,7 @@
 
 ## 解析口径
 
-- **套餐**：`subscription.data`（数组，或 `data.records` / `data.list`）里第一条 `status` 为 `VALID` / `ACTIVE` / `SUCCESS` 的记录（没有则取第一条）。`productId` 命中 `PlanCatalog.zhipuSKU` 时直接得到档位、周期、标价；否则用 `productName` 按含 `lite` / `max` / `pro` 映射为 Coding Plan Lite / Max / Pro。`subscription` 缺失时用 `quota.data` 的套餐名字段，按 `planName` → `plan` → `plan_type` → `packageName` → `level` 取第一个非空串再做同样映射（订阅接口仍是价格与周期的唯一权威，套餐名字段不参与定价）。
+- **套餐**：`subscription.data`（数组，或 `data.records` / `data.list`）里的**现行**记录（与 Grok 同规则）：下文「到期」口径的结束时间已过即失效；`status` 含 `INVALID` / `EXPIRED` / `REFUND` / `CLOSED` / `FAIL` / `INACTIVE` 绝对失效；含 `CANCEL` 只是关了续费，有未过的结束时间仍现行、没给结束时间才失效；未知状态、空串不当失效；多条现行时 `VALID` / `ACTIVE` / `SUCCESS` 的优先，否则取第一条。全部失效时不取套餐、不写 `planProductID` / 到期（2026-09-14 起不再回落到第一条——那是已到期的历史订阅），有记录仍算已登录。`productId` 命中 `PlanCatalog.zhipuSKU` 时直接得到档位、周期、标价；否则用 `productName` 按含 `lite` / `max` / `pro` 映射为 Coding Plan Lite / Max / Pro。`subscription` 没有任何记录时才用 `quota.data` 的套餐名字段（有记录但全部失效就是过期，不从这里捞回），按 `planName` → `plan` → `plan_type` → `packageName` → `level` 取第一个非空串再做同样映射（订阅接口仍是价格与周期的唯一权威，套餐名字段不参与定价）。
 - **周期**：`billingCycle` 字段（如 `annually`）> SKU 表周期 > `productName` 里的周期词 > 由起止时间推算；仍无且有标价时按月。
 - **到期**：`valid` 的结束时间（`"起-止"` 取末段 `yyyy-MM-dd HH:mm:ss`）> `nextRenewTime` > `expireTime`；起始取 `valid` 首段 > `currentRenewTime` > `purchaseTime`。
 
