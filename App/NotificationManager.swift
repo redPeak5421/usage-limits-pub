@@ -146,11 +146,13 @@ final class NotificationManager: NSObject {
                 ))
             }
         }
-        for snap in store.allSnapshots() where store.isEnabled(snap.provider) && snap.status.isOK {
+        for snap in store.allSnapshots()
+        where ProviderAvailability.isAvailable(snap.provider) && store.isEnabled(snap.provider) && snap.status.isOK {
             schedulePair(snap: snap, account: store.primaryAccount(of: snap.provider))
         }
-        for account in store.accounts where !account.isCustom && !account.isPrimary && account.isEnabled {
-            guard let provider = account.provider, store.isEnabled(provider) else { continue }
+        // 附加账号的提醒只看自己的开关，不随主账号停用；目录门禁照旧
+        for account in store.accounts
+        where !account.isCustom && !account.isPrimary && account.isEnabled && ProviderAvailability.isAvailable(account) {
             guard let snap = store.accountSnapshot(for: account.id), snap.status.isOK else { continue }
             schedulePair(snap: snap, account: account)
         }

@@ -572,10 +572,11 @@ final class CustomUsageStoreTests: XCTestCase {
             accounts: [primary, extra, disabled, custom, openaiExtra],
             snapshot: { id in id == extra.id ? extraSnap : nil },
             demoMode: false,
-            providerEnabled: { $0 == .claude },
             tintOverrides: [:]
         )
-        XCTAssertEqual(shown.map(\.id), [extra.id], "已关服务商的附加账号不得进手表")
+        // 主账号（服务商级开关）停用不影响附加账号：ChatGPT 的附加号照样进手表，没快照就是未登录占位
+        XCTAssertEqual(shown.map(\.id), [extra.id, openaiExtra.id], "附加账号只看自己的开关")
+        XCTAssertEqual(shown[1].snapshot.status, .needsLogin)
         XCTAssertEqual(shown[0].title, "工作号")
         XCTAssertEqual(shown[0].provider, .claude)
         XCTAssertEqual(shown[0].snapshot.planName, "Claude Pro")
@@ -585,7 +586,7 @@ final class CustomUsageStoreTests: XCTestCase {
         let packed = WatchExtraPayload.encode(shown, encoder: JSONEncoder())
         XCTAssertFalse(String(data: packed.data, encoding: .utf8)?.contains("token") == true)
         let decoded = WatchExtraPayload.decode(packed.data, decoder: JSONDecoder())
-        XCTAssertEqual(decoded.map(\.id), [extra.id])
+        XCTAssertEqual(decoded.map(\.id), [extra.id, openaiExtra.id])
         XCTAssertEqual(decoded.first?.tint?.startHex, "#AABBCC")
     }
 
@@ -654,4 +655,26 @@ final class CustomUsageStoreTests: XCTestCase {
         XCTAssertEqual(gauged[0].displayedPercent ?? -1, 75, accuracy: 0.001)
     }
 
+
+    /// 2026-09-15：同一服务商的多个账号是平级的独立账号；表端设置按账号列开关，停用的也要列出来才能再打开。
+    func testWatchAccountTogglesListEveryBuiltinAccountIncludingDisabled() throws {
+        let first = ProviderAccount(provider: .grok, name: "", isPrimary: true)
+        var second = ProviderAccount(provider: .grok, name: "Grok-2")
+        second.isEnabled = false
+        let custom = ProviderAccount(source: .custom(templateID: UUID()), name: "Custom")
+        let hidden = ProviderAccount(provider: .kiro, name: "Hidden")
+        let toggles = WatchAccountToggles.items(
+            accounts: [first, second, custom, hidden],
+            demoMode: false,
+            displayName: { $0.name.isEmpty ? "Grok" : $0.name }
+        )
+        XCTAssertEqual(toggles.map(\.id), [first.id, second.id], "只列内置且目录可见的账号，顺序跟账号列表")
+        XCTAssertEqual(toggles.map(\.title), ["Grok", "Grok-2"])
+        XCTAssertEqual(toggles.map(\.enabled), [true, false], "停用的账号也要列出来")
+        XCTAssertEqual(toggles.map(\.isPrimary), [true, false])
+        XCTAssertEqual(toggles[1].provider, .grok)
+        XCTAssertTrue(WatchAccountToggles.items(accounts: [first], demoMode: true, displayName: { $0.name }).isEmpty)
+        let data = try JSONEncoder().encode(toggles)
+        XCTAssertEqual(try JSONDecoder().decode([WatchAccountToggle].self, from: data), toggles)
+    }
 }

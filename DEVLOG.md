@@ -304,3 +304,20 @@
 - 未改：ChatGPT、MiMo 本就按 `has_active_subscription` / `expired` 过滤（参照实现）；Cursor `membershipType`、Claude 组织档位、StepFun `plan_status`、Gemini 枚举、MiniMax `combo` 打分与 OpenCode `isBlack` 的响应里没有可判到期的字段，按现有官网口径保留；无套餐名的解析器不涉及。目录门禁 `ProviderAvailability` 未动，首页可见的仍是原 11 家。
 - 验证：先用真机形状复现 Grok 解析为 `ok / SuperGrok Heavy`；新增 `SubscriptionExpiryTests`（16 项）与重置券一项，先红后绿；独立评审后补上智谱 `quota` 兜底捞回、Grok credits 残留档位、全 0% 产品占比三处；Core 1221 项全绿，XcodeGen 与 UsageLimits scheme 构建通过。真机过期账号复验、其它五家过期账号的真实响应形状未取得，属代码层面同类防御。
 - 本轮计一项修复，z +1。
+
+## 2026-09-15 · 附加账号不再随主账号停用（1.5.599）
+
+- 现象：登录两个 Grok、两个 Cursor 后，在设置里停用第一个（主账号），第二个也显示「已停用」、点「启用」无效；刷新时 Cursor 附加号一直是旧的登录信息。真机诊断：停用「Grok」「Cursor」、启用「Grok-beef」「Cursor-beef」后，`refreshAll` 只跑了 7 个目标，两家的附加号都不在其中。
+- 原因：`setAccountEnabled` 对主账号会同步写服务商级开关 `provider.enabled.<id>`，而 `AccountVisibility.shouldShowOnHome / shouldProbe` 对所有内置账号都要求该开关为真，附加账号自己的 `isEnabled` 形同虚设；后台刷新与提醒排程也各自再查了一遍服务商开关。11 家可见服务商只要有附加账号都会中招。
+- 处理：服务商级开关明确为主账号的开关（主账号快照按服务商键存，主卡 / 小组件 / 手表都按它取）；附加账号只看自己的 `isEnabled`。`AccountVisibility` 改规则，`setEnabled(false)` 不再作废附加账号在途刷新，`BackgroundRefresh` 三处与 `NotificationManager` 一处去掉对服务商开关的连带检查。设置页状态标签、首页、小组件、自动刷新都经同一条规则，随之改正。独立评审补上两处绕开该规则的地方：表端 `WatchViews` 收到载荷后又按服务商开关过滤了一遍附加账号，删掉；小组件预览的停用态只看服务商开关，改为与小组件同一条规则。顺带：服务商级开关从手表端打开时把值镜像到主账号的 `isEnabled`，否则表上打开后主卡仍被账号开关挡住；提醒排程补上目录门禁。后台刷新的 20 秒预算里现在会多出主账号已停用的附加账号，仍以旧快照 ok 为前提。
+- 验证：`AccountTests` 先把「主配置停用后附加账号不得再探针」的旧断言翻成新规则并复现失败，再转绿，并拆出独立用例；源码契约新增「表端不得二次过滤附加账号」「后台刷新附加账号不看服务商开关」「预览与小组件同规则」，隐藏服务商的附加账号仍不显示也有断言；手表附加账号载荷测试同步改为附加号照常进手表；Core 1222 项全绿，XcodeGen 与 UsageLimits scheme 构建通过。iPhone 17 / iOS 26.5 模拟器按用户场景复现：向 App Group 写入两个 Grok、两个 Cursor（主账号停用、附加账号启用），`--auto-refresh` 后 `refreshAll: 完成 2 个目标`，`grok(Grok-2).parsed` / `cursor(Cursor-2).parsed` 各一条，首页只剩两张附加卡、服务商列表附加账号标「未登录」而非「已停用」；反向（主账号启用、附加账号停用）只探针 `grok.parsed` / `cursor.parsed`。真机已登录账号的实际用量与手表翻页未复测。
+- 本轮计一项修复，z +1。
+
+## 2026-09-15 · 同一服务商的多个账号完全平级（1.5.600）
+
+- 用户明确：同一家的两个账号没有主从关系，只是恰好同一个服务商，要完全独立。盘点后剩下的从属假设只有手表：设置页按服务商列开关，只控制第一个账号，第二个账号在表上没有开关、也看不出关的是哪个。
+- 处理：手机端推送按账号的开关列表（`WatchAccountToggles`：内置且目录可见的每个账号，含已停用，顺序跟账号列表，标题用账号显示名）；表端设置页按账号列行、各自开关，长按拖动按账号排序，回传 `setAccountEnabled` / `setAccountOrder`，手机端走同一套 `setAccountEnabled` / `applyAccountOrder`（服务商顺序随之联动）。手机端还没推账号列表（旧版手机 App）时表端退回原来的按服务商列。表端本地即时更新：首个账号连带圆环页，其它账号关掉即从翻页移除，手机推回后以推送为准。
+- 内部仍保留「首个账号快照按服务商键存、其余按账号 id 存」的存储差异，只是存储位置不同，不再影响任何可见行为；`isPrimary` 只用于这层映射。
+- 独立评审后补：表端只对能解析的服务商写开关、不认识的（手机先升级）不列，免得落到错误的服务商；表端不再本地改翻页载荷，关掉 / 打开某个账号都按账号开关表即时隐藏 / 恢复，两个方向对称且重启不复活；账号顺序回传走 Core 的 `AccountOrder.applying(ids:)`（未列出的账号留原位、已删 id 忽略、重复或空列表拒绝并把当前顺序推回手表）；载荷编码失败记诊断。已知边界：表端翻页仍是「各服务商首个账号在前、其余账号在后」，不跟手机首页的交错顺序；表端设置只列已添加的账号，没添加账号的服务商不再出现（原来那些开关本来也没有可见效果）。
+- 验证：新增 `WatchAccountToggles` 单测（含停用、排除自定义与隐藏服务商、顺序、编解码）、`AccountOrder.applying` 单测与六条源码契约；Core 1224 项全绿，XcodeGen 与 UsageLimits scheme 构建通过。配对模拟器（iPhone 17 + Apple Watch Ultra 3，iOS / watchOS 26.5）实测：表端设置页列出 Grok / Grok-2 / Cursor / Cursor-2 四行各自开关，在表上打开 Grok-2 后手机诊断记「启用账号「Grok-2」」、首页即刻多出 Grok-2 卡，表端开关同步为开。注意装表端包要用当前工程 DerivedData 的 `Debug-watchsimulator/UsageLimitsWatch.app`，`find` 会先撞到别的工作树的旧包。真机与真表未复测。
+- 本轮计一项功能，z +1。

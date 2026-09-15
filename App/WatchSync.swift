@@ -15,6 +15,10 @@ final class WatchSync: NSObject, @unchecked Sendable {
     var onSetEnabled: ((ProviderID, Bool) -> Void)?
     /// 手表端拖动排序时回调（主线程调用；AppState 注入）。
     var onSetOrder: (([ProviderID]) -> Void)?
+    /// 手表端按账号拨动开关（主线程调用；AppState 注入）。
+    var onSetAccountEnabled: ((UUID, Bool) -> Void)?
+    /// 手表端按账号拖动排序（主线程调用；AppState 注入）。
+    var onSetAccountOrder: (([UUID]) -> Void)?
 
     private override init() {
         super.init()
@@ -67,7 +71,6 @@ final class WatchSync: NSObject, @unchecked Sendable {
             accounts: store.accounts,
             snapshot: { store.accountSnapshot(for: $0) },
             demoMode: store.demoMode,
-            providerEnabled: { store.isEnabled($0) },
             tintOverrides: store.providerTintOverrides,
             language: store.appLanguage
         )
@@ -76,6 +79,17 @@ final class WatchSync: NSObject, @unchecked Sendable {
             store.appendDiagnostic("watch: 附加账号载荷超限，丢弃最旧 \(extraPacked.droppedOldest) 个")
         }
         context["extraItems"] = extraPacked.data
+        // 设置页按账号列开关：同一服务商的多个账号平级，停用的也列出来
+        let toggles = WatchAccountToggles.items(
+            accounts: store.accounts,
+            demoMode: store.demoMode,
+            displayName: { store.displayName(for: $0) }
+        )
+        if let togglesData = WatchAccountToggles.encode(toggles, encoder: encoder) {
+            context["accountToggles"] = togglesData
+        } else {
+            store.appendDiagnostic("watch: 账号开关载荷编码失败，表端退回按服务商列")
+        }
         let watchTints = TintResolver.watchProviderOverrides(
             providerOverrides: store.providerTintOverrides,
             accounts: store.accounts
@@ -92,10 +106,23 @@ final class WatchSync: NSObject, @unchecked Sendable {
            let value = payload["value"] as? Bool {
             DispatchQueue.main.async { self.onSetEnabled?(provider, value) }
         }
+        // 每条命令独立判断，一条格式不对不影响同一载荷里的其它命令
         if let rawOrder = payload["setOrder"] as? [String] {
             let order = rawOrder.compactMap(ProviderID.init(rawValue:))
-            guard !order.isEmpty else { return }
-            DispatchQueue.main.async { self.onSetOrder?(order) }
+            if !order.isEmpty {
+                DispatchQueue.main.async { self.onSetOrder?(order) }
+            }
+        }
+        if let raw = payload["setAccountEnabled"] as? String,
+           let id = UUID(uuidString: raw),
+           let value = payload["accountValue"] as? Bool {
+            DispatchQueue.main.async { self.onSetAccountEnabled?(id, value) }
+        }
+        if let rawIDs = payload["setAccountOrder"] as? [String] {
+            let ids = rawIDs.compactMap(UUID.init(uuidString:))
+            if !ids.isEmpty {
+                DispatchQueue.main.async { self.onSetAccountOrder?(ids) }
+            }
         }
     }
 }

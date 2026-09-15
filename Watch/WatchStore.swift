@@ -13,6 +13,8 @@ final class WatchStore: NSObject, ObservableObject, @unchecked Sendable {
     @Published var snapshots: [ProviderID: ProviderSnapshot] = [:]
     @Published var customItems: [WatchCustomItem] = []
     @Published var extraItems: [WatchExtraItem] = []
+    /// 设置页按账号的开关行（同一服务商的多个账号平级，停用的也在）。
+    @Published var accountToggles: [WatchAccountToggle] = []
     @Published var enabled: Set<ProviderID> = Set(ProviderID.allCases)
     @Published var order: [ProviderID] = ProviderID.allCases
     @Published var language: AppLanguage = .system
@@ -45,6 +47,9 @@ final class WatchStore: NSObject, ObservableObject, @unchecked Sendable {
         if let data = UserDefaults.standard.data(forKey: "watch.extraItems") {
             extraItems = WatchExtraPayload.decode(data, decoder: decoder)
         }
+        if let data = UserDefaults.standard.data(forKey: "watch.accountToggles") {
+            accountToggles = WatchAccountToggles.decode(data, decoder: decoder)
+        }
         if let data = UserDefaults.standard.data(forKey: "watch.tintOverrides"),
            let map = try? decoder.decode([String: BrandTint].self, from: data) {
             tintOverrides = map
@@ -75,6 +80,30 @@ final class WatchStore: NSObject, ObservableObject, @unchecked Sendable {
         }
         cache.setEnabled(on, for: provider)
         sendToPhone(["setEnabled": provider.rawValue, "value": on])
+    }
+
+    /// 设置页按账号拨动开关：本地即时生效并缓存，回传 iPhone。
+    /// 圆环页按服务商开关取，翻页里的其它账号按本表的开关过滤（见 WatchViews），两个方向都即时、对称。
+    /// 表端不认识的服务商（手机先升级）不写开关，免得落到错误的服务商上。
+    func setAccountEnabled(_ id: UUID, on: Bool) {
+        guard let idx = accountToggles.firstIndex(where: { $0.id == id }) else { return }
+        let toggle = accountToggles[idx]
+        guard let provider = ProviderID(rawValue: toggle.providerRaw) else { return }
+        accountToggles[idx].enabled = on
+        if toggle.isPrimary {
+            if on { enabled.insert(provider) } else { enabled.remove(provider) }
+            cache.setEnabled(on, for: provider)
+        }
+        if let data = try? JSONEncoder().encode(accountToggles) {
+            UserDefaults.standard.set(data, forKey: "watch.accountToggles")
+        }
+        sendToPhone(["setAccountEnabled": id.uuidString, "accountValue": on])
+    }
+
+    /// 设置页按账号拖动排序：回传 iPhone 重排账号列表（服务商顺序随之联动）。
+    func moveAccountToggles(fromOffsets: IndexSet, toOffset: Int) {
+        accountToggles.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        sendToPhone(["setAccountOrder": accountToggles.map(\.id.uuidString)])
     }
 
     /// 设置页长按拖动排序：改的是与 iPhone 共用的同一份全局顺序，回传后两端联动。
@@ -145,6 +174,10 @@ final class WatchStore: NSObject, ObservableObject, @unchecked Sendable {
         if let data = context["extraItems"] as? Data {
             extraItems = demoMode ? [] : WatchExtraPayload.decode(data, decoder: decoder)
             UserDefaults.standard.set(data, forKey: "watch.extraItems")
+        }
+        if let data = context["accountToggles"] as? Data {
+            accountToggles = demoMode ? [] : WatchAccountToggles.decode(data, decoder: decoder)
+            UserDefaults.standard.set(data, forKey: "watch.accountToggles")
         }
         if let data = context["tintOverrides"] as? Data,
            let map = try? decoder.decode([String: BrandTint].self, from: data) {

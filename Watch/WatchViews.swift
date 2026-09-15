@@ -38,8 +38,13 @@ struct ProviderRingsPager: View {
         store.demoMode ? [] : store.customItems
     }
 
+    /// 载荷在手机端已按 AccountVisibility 过滤；表上刚关掉的账号按账号开关表即时隐藏，
+    /// 不按服务商开关过滤（同一服务商的账号平级），手机推回后以推送为准。
     private var visibleExtraItems: [WatchExtraItem] {
-        store.demoMode ? [] : store.extraItems.filter { store.enabled.contains($0.provider) }
+        guard !store.demoMode else { return [] }
+        guard !store.accountToggles.isEmpty else { return store.extraItems }
+        let off = Set(store.accountToggles.filter { !$0.enabled }.map(\.id))
+        return store.extraItems.filter { !off.contains($0.id) }
     }
 
     var body: some View {
@@ -367,7 +372,8 @@ private struct SingleRing: View {
     }
 }
 
-/// 设置页：服务商开关 + 长按拖动排序，均与 iPhone App 实时双向同步。
+/// 设置页：按账号列开关 + 长按拖动排序，均与 iPhone App 实时双向同步。
+/// 同一服务商的多个账号是平级的独立账号，各自一行；手机端还没推账号列表时退回按服务商列。
 struct WatchSettingsView: View {
     @EnvironmentObject private var store: WatchStore
     @Environment(\.appLanguage) private var lang
@@ -375,20 +381,39 @@ struct WatchSettingsView: View {
     var body: some View {
         List {
             Section {
-                ForEach(store.order.filter(ProviderAvailability.isAvailable)) { provider in
-                    Toggle(isOn: Binding(
-                        get: { store.enabled.contains(provider) },
-                        set: { store.setEnabled($0, for: provider) }
-                    )) {
-                        HStack(spacing: 6) {
-                            ProviderLogo(provider: provider, size: 12)
-                            Text(provider.localizedName(lang))
-                                .lineLimit(1)
+                if store.accountToggles.isEmpty {
+                    ForEach(store.order.filter(ProviderAvailability.isAvailable)) { provider in
+                        Toggle(isOn: Binding(
+                            get: { store.enabled.contains(provider) },
+                            set: { store.setEnabled($0, for: provider) }
+                        )) {
+                            HStack(spacing: 6) {
+                                ProviderLogo(provider: provider, size: 12)
+                                Text(provider.localizedName(lang))
+                                    .lineLimit(1)
+                            }
                         }
                     }
-                }
-                .onMove { from, to in
-                    store.moveOrder(fromOffsets: from, toOffset: to)
+                    .onMove { from, to in
+                        store.moveOrder(fromOffsets: from, toOffset: to)
+                    }
+                } else {
+                    // 表端不认识的服务商（手机先升级）不列，免得开关落到错误的服务商上
+                    ForEach(store.accountToggles.filter { ProviderID(rawValue: $0.providerRaw) != nil }) { toggle in
+                        Toggle(isOn: Binding(
+                            get: { toggle.enabled },
+                            set: { store.setAccountEnabled(toggle.id, on: $0) }
+                        )) {
+                            HStack(spacing: 6) {
+                                ProviderLogo(provider: toggle.provider, size: 12)
+                                Text(toggle.title)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .onMove { from, to in
+                        store.moveAccountToggles(fromOffsets: from, toOffset: to)
+                    }
                 }
             } header: {
                 Text(L10n.tr("settings.providers", lang))

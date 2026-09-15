@@ -13,6 +13,10 @@ final class ProviderAvailabilityTests: XCTestCase {
         let account = ProviderAccount(provider: .kiro, name: "Saved", isPrimary: true)
         XCTAssertFalse(AccountVisibility.shouldShowOnHome(account, providerEnabled: true))
         XCTAssertFalse(AccountVisibility.shouldProbe(account, providerEnabled: true))
+        // 附加账号不看服务商开关，但目录门禁仍在前面：隐藏服务商的附加账号照样不显示、不探针
+        let extra = ProviderAccount(provider: .kiro, name: "Extra")
+        XCTAssertFalse(AccountVisibility.shouldShowOnHome(extra, providerEnabled: false))
+        XCTAssertFalse(AccountVisibility.shouldProbe(extra, providerEnabled: false))
     }
 
     func testVisibleReorderingPreservesHiddenAccountsAndCustomAccounts() throws {

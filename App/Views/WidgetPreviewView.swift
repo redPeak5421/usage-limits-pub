@@ -40,6 +40,17 @@ struct WidgetPreviewView: View {
         )
     }
 
+    /// 与小组件同一条规则：账号自身开关 + 主账号才看服务商开关；找不到账号的兜底项才只看服务商开关。
+    private func previewDisabled(_ item: WidgetAccountItem) -> Bool {
+        if isSimulated { return false }
+        if let account = state.accounts.first(where: { $0.id.uuidString == item.id }) {
+            return !AccountVisibility.shouldShowOnHome(
+                account, providerEnabled: state.isProviderEnabled(for: account)
+            )
+        }
+        return !state.isEnabled(item.provider)
+    }
+
     private var selectedSmallItem: WidgetAccountItem? {
         previewAccountItems.first { $0.id == smallAccountID } ?? previewAccountItems.first
     }
@@ -188,9 +199,7 @@ struct WidgetPreviewView: View {
                                 provider: item.provider,
                                 snapshot: display(for: item).snapshot,
                                 now: Date(),
-                                disabled: item.isCustom || isSimulated
-                                    ? false
-                                    : !state.isEnabled(item.provider),
+                                disabled: previewDisabled(item),
                                 title: item.title,
                                 isCustom: item.isCustom,
                                 tint: display(for: item).tint,

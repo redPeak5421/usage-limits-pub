@@ -237,6 +237,15 @@ final class AppState: ObservableObject {
         WatchSync.shared.onSetOrder = { [weak self] order in
             Task { @MainActor in self?.setOrder(order) }
         }
+        WatchSync.shared.onSetAccountEnabled = { [weak self] id, enabled in
+            Task { @MainActor in
+                guard let self, let account = self.accounts.first(where: { $0.id == id }) else { return }
+                self.setAccountEnabled(account, enabled: enabled)
+            }
+        }
+        WatchSync.shared.onSetAccountOrder = { [weak self] ids in
+            Task { @MainActor in self?.applyAccountOrder(ids: ids) }
+        }
         WatchSync.shared.activate()
         // 上次进程里打开过隐藏二维码：开关已随重启消失，分享状态必须一并恢复。
         restoreShareBrandVisibility()
@@ -379,16 +388,20 @@ final class AppState: ObservableObject {
         enabledProviders.contains(provider)
     }
 
-    /// 设置页开关：持久化到 App Group，并同步首页与小组件。
+    /// 服务商级开关 = 主账号的开关：持久化到 App Group，并同步首页与小组件。
+    /// 手表端的开关直接进这里，所以要把值镜像到主账号的 isEnabled，否则表上打开后主卡仍被账号开关挡住。
     func setEnabled(_ enabled: Bool, for provider: ProviderID) {
         store.setEnabled(enabled, for: provider)
+        if let idx = accounts.firstIndex(where: { $0.provider == provider && $0.isPrimary }),
+           accounts[idx].isEnabled != enabled {
+            accounts[idx].isEnabled = enabled
+            persistAccounts()
+        }
         if enabled {
             enabledProviders.insert(provider)
         } else {
+            // 只作废主账号在途刷新；附加账号有各自的开关，不随服务商级开关停用
             bumpPrimaryRefreshGeneration(provider)
-            for account in accounts where account.provider == provider && !account.isPrimary {
-                bumpAccountRefreshGeneration(account.id)
-            }
             enabledProviders.remove(provider)
         }
         reloadFromStore()
@@ -447,6 +460,16 @@ final class AppState: ObservableObject {
     /// 设置页/首页拖动后的新顺序：账号数组照单全收（允许不同服务商穿插）；
     /// 服务商全局顺序按账号首次出现的服务商重排（小组件/手表仍按服务商），
     /// 没有账号的服务商保持原有相对顺序垫底。
+    /// 表端只列内置可见账号；按它给的 id 顺序重排这些账号，其余（自定义 / 隐藏）留在原位。
+    /// 列表不合法（重复 / 空）时不动，并把当前顺序推回手表，免得表端停在乐观改过的顺序上。
+    func applyAccountOrder(ids: [UUID]) {
+        guard let ordered = AccountOrder.applying(ids: ids, to: accounts) else {
+            WatchSync.shared.pushState()
+            return
+        }
+        applyAccountOrder(ordered)
+    }
+
     func applyAccountOrder(_ ordered: [ProviderAccount]) {
         accounts = ordered
         persistAccounts()
@@ -486,7 +509,7 @@ final class AppState: ObservableObject {
         store.isProviderEnabled(for: account)
     }
 
-    /// 停用/启用已添加账号：不删配置；主账号同步服务商级开关（首页/小组件/手表）。
+    /// 停用/启用已添加账号：不删配置；主账号同步服务商级开关（首页/小组件/手表），附加账号互不影响。
     func setAccountEnabled(_ account: ProviderAccount, enabled: Bool) {
         guard let idx = accounts.firstIndex(where: { $0.id == account.id }) else { return }
         if !enabled {

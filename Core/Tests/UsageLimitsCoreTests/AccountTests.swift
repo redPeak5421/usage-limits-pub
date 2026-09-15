@@ -413,6 +413,27 @@ final class AccountTests: XCTestCase {
         XCTAssertTrue(watchViews.contains("WatchPagerPage.extra") || watchViews.contains("case extra"),
                       "附加账号不得和主号抢同一个 ProviderID 页")
         XCTAssertTrue(watchViews.contains("localizedName(lang)"), "表端设置名须本地化，不得写死 vendorName")
+        // 2026-09-15：附加账号只看自己的开关，表端不得再按服务商开关二次过滤载荷
+        XCTAssertFalse(watchViews.contains("extraItems.filter { store.enabled.contains"),
+                       "表端附加账号不得随主账号（服务商级开关）一起隐藏")
+        // 同一家的两个账号是平级的：表端设置按账号列开关，不再只给第一个账号一个服务商开关
+        XCTAssertTrue(watchSync.contains("WatchAccountToggles"), "手表推送须带每个账号的开关状态")
+        XCTAssertTrue(watchSync.contains("setAccountEnabled"), "表端按账号回传开关")
+        XCTAssertTrue(watchStore.contains("accountToggles"), "表端须收下按账号的开关列表")
+        XCTAssertTrue(watchViews.contains("accountToggles"), "表端设置页按账号列开关")
+        let setEnabledRange = try XCTUnwrap(appState.range(of: "func setEnabled(_ enabled: Bool, for provider: ProviderID)"))
+        XCTAssertTrue(appState[setEnabledRange.upperBound...].prefix(600).contains("accounts[idx].isEnabled = enabled"),
+                      "服务商级开关须镜像到首个账号的 isEnabled，否则表上打开后主卡仍被账号开关挡住")
+        XCTAssertTrue(appState.contains("AccountOrder.applying(ids:"), "表端回传的账号顺序须走 Core 的 AccountOrder.applying")
+        XCTAssertFalse(watchStore.contains("extraItems.removeAll"), "表端不得本地改 extraItems，隐藏与否由账号开关推导")
+        XCTAssertTrue(watchStore.contains("ProviderID(rawValue: toggle.providerRaw)"), "表端写开关前须能解析服务商，未知服务商不得落到 claude")
+        XCTAssertFalse(background.contains("guard let provider = account.provider, store.isEnabled(provider)"),
+                       "后台刷新附加账号不得再要求服务商开关")
+        let preview = try String(
+            contentsOf: root.appendingPathComponent("App/Views/WidgetPreviewView.swift"), encoding: .utf8
+        )
+        XCTAssertTrue(preview.contains("AccountVisibility.shouldShowOnHome"),
+                      "小组件预览的停用态须与小组件同一条规则，不能只看服务商开关")
         XCTAssertTrue(watchViews.contains("UsagePresentation.barPercent"), "表端圆环须跟展示口径")
         XCTAssertTrue(watchViews.contains("emptyUsageCaption"), "表端错误态须走 emptyUsageCaption，不得一律未登录")
         XCTAssertTrue(watchViews.contains("L10n.metricLabel"), "表端选中环指标名须走 L10n.metricLabel")
@@ -602,8 +623,44 @@ final class AccountTests: XCTestCase {
         XCTAssertEqual(store.accounts.count, 2)
         XCTAssertNil(store.displaySnapshot(for: .claude))
         XCTAssertFalse(AccountVisibility.shouldShowOnHome(primary, providerEnabled: false))
-        XCTAssertFalse(AccountVisibility.shouldProbe(extra, providerEnabled: false),
-                       "主配置停用后附加账号不得再探针")
+    }
+
+    /// 2026-09-15 用户反馈：停用第一个 Grok / Cursor 后第二个也被停用、不再刷新。
+    /// 服务商级开关只是主账号的开关，附加账号只看自己的 isEnabled。
+    /// 表端按账号 id 回传顺序：只重排列出的账号，未列出的（自定义 / 隐藏）留在原位；
+    /// 列表陈旧（多了已删账号）照常，重复 id 或空列表拒绝。
+    func testAccountOrderApplyingIDsKeepsUnlistedInPlaceAndRejectsBadInput() {
+        let a = ProviderAccount(provider: .claude, name: "A", isPrimary: true)
+        let b = ProviderAccount(provider: .grok, name: "B", isPrimary: true)
+        let custom = ProviderAccount(source: .custom(templateID: UUID()), name: "C")
+        let d = ProviderAccount(provider: .grok, name: "D")
+        let start = [a, b, custom, d]
+        XCTAssertEqual(AccountOrder.applying(ids: [d.id, b.id, a.id], to: start), [d, b, custom, a])
+        XCTAssertEqual(AccountOrder.applying(ids: [b.id, UUID(), a.id, d.id], to: start), [b, a, custom, d], "已删账号的 id 忽略")
+        XCTAssertNil(AccountOrder.applying(ids: [a.id, a.id, b.id], to: start), "重复 id 拒绝")
+        XCTAssertNil(AccountOrder.applying(ids: [], to: start))
+        XCTAssertEqual(AccountOrder.applying(ids: [a.id], to: start), start, "单个 id 等于不动")
+    }
+
+    func testExtraAccountIgnoresPrimaryProviderSwitch() {
+        let (store, cleanup) = freshStore()
+        defer { cleanup() }
+        let primary = ProviderAccount(provider: .claude, name: "", isPrimary: true)
+        var extra = ProviderAccount(provider: .claude, name: "工作号")
+        store.accounts = [primary, extra]
+        store.setEnabled(false, for: ProviderID.claude)
+
+        XCTAssertFalse(AccountVisibility.shouldShowOnHome(store.accounts[0], providerEnabled: store.isEnabled(ProviderID.claude)),
+                       "首个账号自身开着，仍受服务商级开关约束")
+        XCTAssertTrue(AccountVisibility.shouldShowOnHome(store.accounts[1], providerEnabled: store.isEnabled(ProviderID.claude)),
+                      "主账号停用后附加账号仍独立显示")
+        XCTAssertTrue(AccountVisibility.shouldProbe(store.accounts[1], providerEnabled: store.isEnabled(ProviderID.claude)),
+                      "主账号停用后附加账号仍独立探针")
+
+        extra.isEnabled = false
+        store.accounts = [primary, extra]
+        XCTAssertFalse(AccountVisibility.shouldShowOnHome(store.accounts[1], providerEnabled: false))
+        XCTAssertFalse(AccountVisibility.shouldProbe(store.accounts[1], providerEnabled: true), "附加账号自己停用才隐藏")
     }
 
     func testDisableEnableL10nKeys() {

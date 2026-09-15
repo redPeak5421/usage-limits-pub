@@ -217,5 +217,13 @@ public enum AccountOrder {
         return next
     }
 
+    /// 按 id 顺序重排列出的账号，未列出的账号留在原位（表端只列内置可见账号，自定义 / 隐藏不在其中）。
+    /// 列表里已删账号的 id 忽略；重复 id 或空列表返回 nil，调用方应拒绝并把当前顺序推回去。
+    public static func applying(ids: [UUID], to accounts: [ProviderAccount]) -> [ProviderAccount]? {
+        guard !ids.isEmpty, Set(ids).count == ids.count else { return nil }
+        let listed = Set(ids)
+        var moved = ids.compactMap { id in accounts.first { $0.id == id } }.makeIterator()
+        return accounts.map { listed.contains($0.id) ? (moved.next() ?? $0) : $0 }
+    }
 }
 

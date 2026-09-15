@@ -52,8 +52,8 @@ enum BackgroundRefresh {
             }
             let extraItems = store.accounts.compactMap { account -> (id: UUID, fetchedAt: Date)? in
                 guard ProviderAvailability.isAvailable(account) else { return nil }
+                // 附加账号只看自己的开关，主账号（服务商级开关）停用不影响它
                 guard !account.isCustom, !account.isPrimary, account.isEnabled else { return nil }
-                guard let provider = account.provider, store.isEnabled(provider) else { return nil }
                 guard let old = store.accountSnapshot(for: account.id), old.status.isOK else { return nil }
                 return (account.id, old.fetchedAt)
             }
@@ -139,7 +139,7 @@ enum BackgroundRefresh {
     ) async -> Bool {
         guard let account = store.accounts.first(where: { $0.id == accountID }) else { return true }
         guard !account.isCustom, !account.isPrimary, account.isEnabled else { return true }
-        guard let provider = account.provider, store.isEnabled(provider) else { return true }
+        guard let provider = account.provider else { return true }
         guard let old = store.accountSnapshot(for: account.id), old.status.isOK else { return true }
         let startFingerprint = account.identityFingerprint
         let startFetchedAt = old.fetchedAt
@@ -147,7 +147,7 @@ enum BackgroundRefresh {
         if Task.isCancelled { return false }
         guard let live = store.accounts.first(where: { $0.id == accountID }),
               live.isCustom == false, live.isPrimary == false, live.isEnabled,
-              let liveProvider = live.provider, store.isEnabled(liveProvider)
+              let liveProvider = live.provider
         else { return false }
         guard store.accountSnapshot(for: accountID)?.fetchedAt == startFetchedAt else { return false }
         guard live.identityFingerprint == startFingerprint else { return false }

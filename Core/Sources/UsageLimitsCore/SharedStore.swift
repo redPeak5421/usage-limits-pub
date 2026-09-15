@@ -393,7 +393,7 @@ public final class SharedStore: @unchecked Sendable {
         queue.sync { (defaults.object(forKey: enabledKey(provider)) as? Bool) ?? true }
     }
 
-    /// 自定义账号没有供应商开关，只看账号自身。
+    /// 服务商开关只对主账号有意义；自定义账号与附加账号只看账号自身（`AccountVisibility` 会忽略这里的返回值）。
     public func isProviderEnabled(for account: ProviderAccount) -> Bool {
         account.provider.map(isEnabled) ?? true
     }

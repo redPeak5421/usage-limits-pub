@@ -175,7 +175,6 @@ public enum WatchExtraPayload {
         accounts: [ProviderAccount],
         snapshot: (UUID) -> ProviderSnapshot?,
         demoMode: Bool,
-        providerEnabled: (ProviderID) -> Bool = { _ in true },
         tintOverrides: [String: BrandTint] = [:],
         language: AppLanguage = .system
     ) -> [WatchExtraItem] {
@@ -183,9 +182,8 @@ public enum WatchExtraPayload {
         return accounts.compactMap { account in
             guard !account.isCustom, !account.isPrimary else { return nil }
             guard let provider = account.provider else { return nil }
-            guard AccountVisibility.shouldShowOnHome(
-                account, providerEnabled: providerEnabled(provider)
-            ) else { return nil }
+            // 附加账号只看自己的开关（服务商级开关是主账号的），这里不需要再传开关
+            guard AccountVisibility.shouldShowOnHome(account, providerEnabled: true) else { return nil }
             let snap = snapshot(account.id) ?? ProviderSnapshot(
                 provider: provider, fetchedAt: Date(), status: .needsLogin
             )
@@ -239,5 +237,59 @@ public enum WatchExtraPayload {
             planExpiresAt: snap.planExpiresAt,
             currency: snap.currency
         )
+    }
+}
+
+/// 表端设置页的账号开关行：同一服务商的多个账号是平级的独立账号，各自一行、各自一个开关。
+/// 停用的也要列出来，否则表上没法再打开。不含任何凭据。
+public struct WatchAccountToggle: Codable, Equatable, Identifiable, Sendable {
+    public var id: UUID
+    public var providerRaw: String
+    public var title: String
+    public var enabled: Bool
+    /// 首个账号的快照按服务商键存，表端圆环页按它取；只用于表端本地即时更新，不表示从属关系。
+    public var isPrimary: Bool
+
+    public init(id: UUID, providerRaw: String, title: String, enabled: Bool, isPrimary: Bool) {
+        self.id = id
+        self.providerRaw = providerRaw
+        self.title = title
+        self.enabled = enabled
+        self.isPrimary = isPrimary
+    }
+
+    public var provider: ProviderID {
+        ProviderID(rawValue: providerRaw) ?? .claude
+    }
+}
+
+public enum WatchAccountToggles {
+    /// 只列内置且目录可见的账号，顺序跟手机端账号列表；演示模式不推。
+    public static func items(
+        accounts: [ProviderAccount],
+        demoMode: Bool,
+        displayName: (ProviderAccount) -> String
+    ) -> [WatchAccountToggle] {
+        if demoMode { return [] }
+        return accounts.compactMap { account in
+            guard !account.isCustom, let provider = account.provider,
+                  ProviderAvailability.isAvailable(account) else { return nil }
+            return WatchAccountToggle(
+                id: account.id,
+                providerRaw: provider.rawValue,
+                title: displayName(account),
+                enabled: account.isEnabled,
+                isPrimary: account.isPrimary
+            )
+        }
+    }
+
+    /// 编码失败返回 nil：调用方记诊断，不要推空数据（表端会把空列表当成旧版手机、退回按服务商列）。
+    public static func encode(_ items: [WatchAccountToggle], encoder: JSONEncoder) -> Data? {
+        try? encoder.encode(items)
+    }
+
+    public static func decode(_ data: Data, decoder: JSONDecoder) -> [WatchAccountToggle] {
+        (try? decoder.decode([WatchAccountToggle].self, from: data)) ?? []
     }
 }
