@@ -30,6 +30,60 @@ final class WebViewFetcher: NSObject {
         accountID.map { WKWebsiteDataStore(forIdentifier: $0) } ?? .default()
     }
 
+    // MARK: - 内嵌 WebView 内容策略（DEVLOG 2026-09-16）
+
+    /// `EmbeddedWebContentPolicy` 的编译结果。启动时编译一次，登录页、OAuth 弹窗兜底、探针页共用。
+    private static var embeddedContentRules: WKContentRuleList?
+    private static var embeddedContentRulesAttempted = false
+    private static var embeddedContentRulesCompiling = false
+    private static var embeddedContentRulesWaiters: [CheckedContinuation<Void, Never>] = []
+
+    /// 编译（或从 WKContentRuleListStore 取缓存）内容规则表。只尝试一次；并发调用等同一次结果。
+    /// 编译失败只记诊断不抛错——没有规则表页面照常能登录 / 探针，只是失去媒体 / 广告拦截。
+    @discardableResult
+    static func prepareEmbeddedContentRules() async -> WKContentRuleList? {
+        if embeddedContentRulesAttempted { return embeddedContentRules }
+        if embeddedContentRulesCompiling {
+            await withCheckedContinuation { embeddedContentRulesWaiters.append($0) }
+            return embeddedContentRules
+        }
+        embeddedContentRulesCompiling = true
+        let identifier = EmbeddedWebContentPolicy.ruleListIdentifier
+        var rules: WKContentRuleList?
+        if let store = WKContentRuleListStore.default() {
+            rules = try? await store.contentRuleList(forIdentifier: identifier)
+            if rules == nil {
+                do {
+                    rules = try await store.compileContentRuleList(
+                        forIdentifier: identifier,
+                        encodedContentRuleList: EmbeddedWebContentPolicy.contentRuleListJSON
+                    )
+                } catch {
+                    SharedStore.shared.appendDiagnostic("webview.contentRules: 编译失败 \(error.localizedDescription)")
+                }
+            }
+        } else {
+            SharedStore.shared.appendDiagnostic("webview.contentRules: 规则库不可用")
+        }
+        embeddedContentRules = rules
+        embeddedContentRulesAttempted = true
+        embeddedContentRulesCompiling = false
+        let waiters = embeddedContentRulesWaiters
+        embeddedContentRulesWaiters = []
+        waiters.forEach { $0.resume() }
+        return rules
+    }
+
+    /// 给内嵌 WebView 套统一内容策略：iPhone 上开 inline 播放（默认 false 时任何起播都走系统
+    /// 全屏播放器，而探针脚本会给页面授予用户激活），再挂媒体 / 广告拦截规则表。
+    /// 规则表还没编译好时只开 inline——启动即预编译，登录页几乎碰不到这种情况。
+    static func applyEmbeddedContentPolicy(to config: WKWebViewConfiguration) {
+        config.allowsInlineMediaPlayback = true
+        if let rules = embeddedContentRules {
+            config.userContentController.add(rules)
+        }
+    }
+
     private var webViews: [String: WKWebView] = [:]
     /// 登录确认后接管的即梦页：首页下拉复用这张已经跑过官网 SPA 的文档。
     private var adoptedLiveKeys: Set<String> = []
@@ -68,6 +122,7 @@ final class WebViewFetcher: NSObject {
         if let existing = webViews[target.key] { return existing }
         let config = WKWebViewConfiguration()
         config.websiteDataStore = Self.dataStore(accountID: target.accountID)
+        Self.applyEmbeddedContentPolicy(to: config)
         let wv = WKWebView(frame: Self.safeContentFrame(), configuration: config)
         wv.customUserAgent = Self.safariUA
         wv.navigationDelegate = self
@@ -157,6 +212,8 @@ final class WebViewFetcher: NSObject {
     }
 
     private func executeProbes(for target: FetchTarget, using existingWebView: WKWebView?) async -> [String: ProbeResult] {
+        // 冷页第一轮也要带上媒体 / 广告拦截；启动时已预编译，这里通常立即返回。
+        await Self.prepareEmbeddedContentRules()
         let provider = target.provider
         let wv: WKWebView
         let retained = provider == .jimeng ? retainedLiveJimengWebView(accountID: target.accountID) : nil

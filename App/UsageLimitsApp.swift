@@ -14,6 +14,8 @@ struct UsageLimitsApp: App {
         BackgroundRefresh.register()
         // 尽早接管通知前台展示（不设 delegate 时前台收到通知不显示）
         NotificationManager.shared.activate()
+        // 内嵌 WebView 的媒体 / 广告拦截规则表：登录页同步建 WebView，必须启动时就编译好（DEVLOG 2026-09-16）
+        Task { await WebViewFetcher.prepareEmbeddedContentRules() }
     }
 
     var body: some Scene {

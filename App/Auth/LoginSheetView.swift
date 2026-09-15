@@ -339,6 +339,8 @@ private struct LoginWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = WebViewFetcher.dataStore(accountID: accountID)
+        // 即梦接管页就是这张配置：媒体拦截 + inline 播放必须在登录页就套上（DEVLOG 2026-09-16）
+        WebViewFetcher.applyEmbeddedContentPolicy(to: config)
         // iOS 默认 false：Google / Apple 的 window.open 会立刻失败，登录页只剩红框。
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
         config.userContentController.addUserScript(WKUserScript(
@@ -538,6 +540,7 @@ private struct LoginWebView: UIViewRepresentable {
             } else {
                 let config = WKWebViewConfiguration()
                 config.websiteDataStore = webView.configuration.websiteDataStore
+                WebViewFetcher.applyEmbeddedContentPolicy(to: config)
                 config.preferences.javaScriptCanOpenWindowsAutomatically = true
                 config.userContentController.addUserScript(WKUserScript(
                     source: LoginWebViewScripts.hideWebAuthn,

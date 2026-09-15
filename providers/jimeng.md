@@ -91,6 +91,7 @@
 - **iPad 视口（2026-09-08 待验证项）**：接管页的 frame = key window bounds 并 autoresize，所以在 iPad 上它是**窗口那么宽**，不是 390×844。模拟器上以未登录状态打开 `/ai-tool/home`（iPad Air 11 全屏竖屏，视口 820pt，UA 未变）实测拿到的是**桌面版布局**，不是移动版。离屏探针页不受影响，仍是固定 390×844 的移动版 SSR。
   桌面版 SSR 是否照样写 `window.__isLogined` / `webSignBody`，需要真实账号在 iPad 上登录后才能定论——**尚未验证**，不得据此断言即梦在 iPad 上可用或不可用。若真机验证发现形状变化，按本文件顶部的维护顺序同轮更新目录、脚本与 fixture；不要为此改 UA 或改回隐藏小窗。
 
+- 媒体与广告拦截（2026-09-16）：登录页与接管页都经 `WebViewFetcher.applyEmbeddedContentPolicy` 挂 `EmbeddedWebContentPolicy` 规则表并开 inline 播放。原因：`evaluateJavaScript` / `callAsyncJavaScript` 会给页面用户激活，iPhone 默认又要求视频全屏播放，官网首页 9 个自动播放视频撞上探针就把系统全屏播放器弹到 App 上。只拦 media 资源与广告域，SSR / secsdk / commerce 接口不受影响，`jimeng.page` 标志应与之前一致。
 - 探针 JS 内 `__jimengWaitHomeReady`：有 native 签名给 SSR / 签名器约 2s，否则约 10s 再等签名器最多 8s；都不要求 uifid。
 - 诊断只写布尔与 HTTP 摘要，不写 Cookie / token / uifid 值。
 

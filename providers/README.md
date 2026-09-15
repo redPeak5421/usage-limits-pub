@@ -29,6 +29,8 @@
 
 iPad 上各家的实际响应形状以真机验证为准；发现漂移按本文件顶部的维护顺序同轮更新目录文件、脚本与 fixture。
 
+**媒体与广告**（2026-09-16）：所有内嵌 WebView（离屏探针、登录页、OAuth 弹窗兜底）都挂 `EmbeddedWebContentPolicy` 规则表：`media` 资源整类拦截、`LoginWebViewScripts.adHosts` 子资源拦截，并开 `allowsInlineMediaPlayback`。原因是 `evaluateJavaScript` / `callAsyncJavaScript` 会给页面用户激活，iPhone 默认视频必须全屏，站点自动播放视频会把系统播放器弹到 App 上（即梦首例）。站点自己的 script / fetch 一律不拦，否则 SSR、签名器、登录态都会断。
+
 **展示约定**：某模型/产品未使用（用量为 0 或额度未动）时，首页默认不显示该条（`UsageMetric.hasUsage`）。
 
 **数值约定**（所有供应商一致）：JSON 布尔不是 0/1 用量；`NaN` / `Infinity` / 溢出指数字符串与任何非有限数直接丢弃。所有 Double→Int 先做 finite / 范围检查，日期只接受 1970–9999。快照落盘前递归验证百分比、金额、余额/总额、breakdown / history 和日期；无效快照拒绝落盘并记诊断，不覆盖上一份有效快照。
