@@ -1,6 +1,6 @@
 import Foundation
 
-/// 解析 MiniMax TokenPlan（platform.minimaxi.com / platform.minimax.io/console/usage）。
+/// 解析 MiniMax TokenPlan（platform.minimax.cn / platform.minimax.io/console/usage）。
 /// 官网定义窗口：5 小时滚动额度 + 每周额度；页面另有视频赠送、积分、近 7/30 天调用、计费历史。
 public enum MiniMaxParser {
     public static func parse(

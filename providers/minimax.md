@@ -1,24 +1,25 @@
-# MiniMax TokenPlan（platform.minimaxi.com / platform.minimax.io）用量接口目录
+# MiniMax TokenPlan（platform.minimax.cn / platform.minimax.io）用量接口目录
 
 - **ProviderID**：国内站 `minimax`；国际站 `minimaxGlobal`（落盘 raw value 为 `minimax_global`）
-- **国内站 Usage / 登录 / 探针执行页**：`https://platform.minimaxi.com/console/usage`
+- **国内站 Usage / 登录 / 探针执行页**：`https://platform.minimax.cn/console/usage`
+- **国内站域名迁移（2026-09-18 实测）**：`minimaxi.com` 全站 302 到 `minimax.cn`（`platform.minimaxi.com/console/usage` → `platform.minimax.cn/console/usage`，`www.minimaxi.com` → `www.minimax.cn`），新登录的 Cookie 落在 `.minimax.cn`。执行页仍写老域名时，页面停在 `platform.minimax.cn`，源门禁判「源漂移」，探针一次都不跑；即使放行，脚本若继续把用量请求打到 `www.minimaxi.com`（该主机的 `/backend/*` 接口不跳转），也是跨站请求，带不上 `.minimax.cn` 的 Cookie。
 - **国际站 Usage / 登录 / 探针执行页**：`https://platform.minimax.io/console/usage`
 - **鉴权**：本机 WebKit Cookie（Cookie-only 即可 200）。请求另带 `x-group-id`（见下方回退链，取不到就不带）。页面在 `platform.*`，用量 XHR 打到 `www.*`。全部 `__probe`（含 billing）带 `noAuth: true`，禁止 helper 把 localStorage token 拼成 Bearer。
-- **站点隔离**：两个 ProviderID 共用 `ProviderScripts.minimax` 与 `MiniMaxParser`，但分别在 `minimaxi.com` / `minimax.io` 源内执行并使用各自 Cookie；国际站不会借用国内站登录态，反之亦然。
-- **Cookie 同步 / 退出登录边界**：`minimax` 只处理 `minimaxi.com`，`minimaxGlobal` 只处理 `minimax.io`，两组必须互斥。当前登录与探针契约没有使用 `minimax.chat`，因此不把它列入任何 ProviderID 的清理范围，避免退出一个账号时扩大删除面。
-- **套餐详情**：https://platform.minimaxi.com/console/plan；**标价页**：https://platform.minimaxi.com/subscribe/token-plan
+- **站点隔离**：两个 ProviderID 共用 `ProviderScripts.minimax` 与 `MiniMaxParser`，但分别在 `minimax.cn` / `minimax.io` 源内执行并使用各自 Cookie；国际站不会借用国内站登录态，反之亦然。
+- **Cookie 同步 / 退出登录边界**：`minimax` 处理 `minimax.cn` 与 `minimaxi.com`（后者是迁移前的旧 Cookie：退出登录时一并清掉，主账号同步到共享存储时也会带上，无害），`minimaxGlobal` 只处理 `minimax.io`，两组必须互斥。当前登录与探针契约没有使用 `minimax.chat`，因此不把它列入任何 ProviderID 的清理范围，避免退出一个账号时扩大删除面。
+- **套餐详情**：https://platform.minimax.cn/console/plan；**标价页**：https://platform.minimax.cn/subscribe/token-plan
 - **范围**：TokenPlan 订阅。按量付费 API Key 不接。
 
 ## 双站（国内 / 国际）
 
-探针里**禁止再写死 `https://www.minimaxi.com`**，一律从 `location.hostname` 推导，同一份脚本在两个站都能跑：
+探针里**禁止写死任何一个 `www` 主机**，一律从 `location.hostname` 推导，同一份脚本在两个站都能跑。老域名 `minimaxi.com` 不单列：页面停在那里时源门禁已经判「源漂移」，脚本不会执行。
 
 | 当前页 hostname | `www` 主机（用量 / combo） | `platform` 主机（计费历史） |
 |---|---|---|
 | 以 `minimax.io` 结尾 | `https://www.minimax.io` | `https://platform.minimax.io` |
-| 其它（默认，含 `minimaxi.com`） | `https://www.minimaxi.com` | `https://platform.minimaxi.com` |
+| 其它（默认，含 `minimax.cn`） | `https://www.minimax.cn` | `https://platform.minimax.cn` |
 
-`platform` 主机：当前页 hostname 已是 `platform.` 开头时直接用 `location.origin`，否则按上表拼。推导结果由 `region` 探针原样回给诊断日志，例如国内站为 `{"host":"https://www.minimaxi.com","platform":"https://platform.minimaxi.com"}`，国际站则是对应的两个 `minimax.io` origin。`host` 是用量 / combo origin，`platform` 是计费历史 origin；两者都只是本地推导的安全 origin 字符串，不含 Cookie、token 或 groupID，也不参与 Swift 解析。
+`platform` 主机：当前页 hostname 已是 `platform.` 开头时直接用 `location.origin`，否则按上表拼。推导结果由 `region` 探针原样回给诊断日志，例如国内站为 `{"host":"https://www.minimax.cn","platform":"https://platform.minimax.cn"}`，国际站则是对应的两个 `minimax.io` origin。`host` 是用量 / combo origin，`platform` 是计费历史 origin；两者都只是本地推导的安全 origin 字符串，不含 Cookie、token 或 groupID，也不参与 Swift 解析。
 
 两个 ProviderID 的账号、快照与登录入口独立；脚本只根据当前页面的 hostname 选主机，Swift 解析契约保持一致。
 

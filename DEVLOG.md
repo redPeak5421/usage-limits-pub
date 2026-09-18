@@ -331,3 +331,11 @@
 - 验证：`EmbeddedWebContentPolicyTests` 7 项先红后绿（规则形状、identifier、三处配置源码契约、启动预编译）；Core 1231 项全绿，XcodeGen 与 UsageLimits scheme 构建通过。iPhone 17 / iOS 26.5 模拟器：同一 forced-gesture `play()` 开策略后 9 个视频全部 `mediaLoadingFailed`、`err=4`、无全屏；规则表落盘 `Library/WebKit/<bundle>/ContentRuleLists/ContentRuleList-usagelimits.embedded.<hash>`；匿名即梦探针的 `jimeng.page` 标志与修复前一致（SSR / secsdk 未受影响），即梦登录页正常渲染。真机登录态复验待用户确认。
 - 教训：`xcodebuild … | grep` 的退出码是 grep 的，第一轮「修复无效」其实装的是旧包；以后认 `BUILD SUCCEEDED` 字样。
 - 本轮计一项修复，z +1。
+
+## 2026-09-18 · MiniMax 国内站迁到 minimax.cn，登录后一直「源漂移」（1.5.603）
+
+- 现象：浏览器内已登录 MiniMax，诊断日志却每 1–2 秒一条 `minimax.origin_drift: 源漂移：当前停留在 platform.minimax.cn`，卡片「网络错误」，登录确认也过不去。同一份日志里 OpenAI / Grok 的 -3 是 chatgpt.com、grok.com 当时连不上（`openai.session` 12 秒超时再重试一轮，把 27 秒共享预算吃到只剩 2692 ms），按设计保留了上次快照，不是本条问题。
+- 原因：国内站把域名从 `minimaxi.com` 迁到 `minimax.cn`，老域名全站 302（`platform.minimaxi.com/console/usage` → `platform.minimax.cn/console/usage`），新登录的 Cookie 落在 `.minimax.cn`。`ProviderID.minimax` 的 origin / loginURL / probeURL 仍写老域名，`WebViewFetcher.hostMatches` 只认 `minimaxi.com`，于是探针页停在新域名就被源门禁拦下、脚本一次都不跑；就算放行，脚本也会把 `www` 用量请求推导到 `www.minimaxi.com`，跨站带不上 `.minimax.cn` 的 Cookie。
+- 处理：先改 `providers/minimax.md` 与索引（迁移实测、三行主机推导表、Cookie 边界）；三个 URL 改 `platform.minimax.cn`；`cookieDomains` 改为 `minimax.cn` + `minimaxi.com`（后者只为退出登录时清掉旧 Cookie，仍与国际站 `minimax.io` 互斥）；探针按页面所在域推导 `www` / `platform`：`minimax.io` → 国际站，其余一律 `minimax.cn`（老域名到不了脚本：源门禁先判漂移）。
+- 验证：新增 `testMiniMaxDomesticSiteOnMinimaxCnKeepsEveryRequestOnMinimaxCn`（在 `platform.minimax.cn` 真跑生产脚本，6 个请求全部留在 `minimax.cn`）并收紧 `CatalogTests` 的域名断言，两条先红后绿；独立 review 后补国际站 `platform.minimax.io` 同形测试，原来三条编排测试的执行页从生产走不到的 `www.minimaxi.com` 改为 `platform.minimax.cn`，Cookie 域互斥改按后缀判定（`WebViewFetcher` 用 `hasSuffix` 匹配）。Core 除 `CustomUsageStoreTests` 外 1201 项全绿；这一组在本机 macOS 27 上稳定失败——测试把 logo 写进真实 App Group 容器，系统连 `ls` 都拒绝（`Operation not permitted`），与本改动无关，且其中强制解包会让 xctest 崩掉、后面的测试不跑，需要 `--skip` 才能跑完。真机登录态复验待用户确认。
+- 本轮计一项修复，z +1；1.5.602 已被当天另一个 TestFlight 构建占用，故取 1.5.603。

@@ -187,10 +187,35 @@ final class ProviderScriptOrchestrationTests: XCTestCase {
             route("cycle_type=3", body: "{}"),
             route("cycle_type=1", body: "{}"),
             route("/account/amount?page=1", kind: "hang"),
-        ], hostname: "www.minimaxi.com", pathname: "/user-center/basic-information")
+        ], hostname: "platform.minimax.cn", pathname: "/console/usage")
         XCTAssertEqual(probe(run, "remains")["status"] as? Int, 200)
         XCTAssertEqual(run.calls.filter { ($0["at"] as? Int) == 0 }.count, 6)
         XCTAssertEqual(run.now, 8_000)
+    }
+
+    func testMiniMaxDomesticSiteOnMinimaxCnKeepsEveryRequestOnMinimaxCn() throws {
+        // 2026-09 国内站 minimaxi.com 整体 302 到 minimax.cn，登录 Cookie 落在 .minimax.cn。
+        let run = try execute("minimax", routes: [
+            route("remains_percent", body: #"{"base_resp":{"status_code":0},"model_remains":[]}"#),
+        ], hostname: "platform.minimax.cn", pathname: "/console/usage")
+        let region = try jsonObject(probe(run, "region")["body"] as? String)
+        XCTAssertEqual(region["host"] as? String, "https://www.minimax.cn")
+        XCTAssertEqual(region["platform"] as? String, "https://platform.minimax.cn")
+        let urls = run.calls.compactMap { $0["url"] as? String }
+        XCTAssertEqual(urls.count, 6)
+        XCTAssertTrue(urls.allSatisfy { $0.hasPrefix("https://www.minimax.cn/") || $0.hasPrefix("https://platform.minimax.cn/") }, "\(urls)")
+    }
+
+    func testMiniMaxGlobalSiteKeepsEveryRequestOnMinimaxIo() throws {
+        let run = try execute("minimax", routes: [
+            route("remains_percent", body: #"{"base_resp":{"status_code":0},"model_remains":[]}"#),
+        ], hostname: "platform.minimax.io", pathname: "/console/usage")
+        let region = try jsonObject(probe(run, "region")["body"] as? String)
+        XCTAssertEqual(region["host"] as? String, "https://www.minimax.io")
+        XCTAssertEqual(region["platform"] as? String, "https://platform.minimax.io")
+        let urls = run.calls.compactMap { $0["url"] as? String }
+        XCTAssertEqual(urls.count, 6)
+        XCTAssertTrue(urls.allSatisfy { $0.hasPrefix("https://www.minimax.io/") || $0.hasPrefix("https://platform.minimax.io/") }, "\(urls)")
     }
 
     func testMiniMaxComboShellStays200AndPreservesYearly200BesideMonthly401() throws {
@@ -202,7 +227,7 @@ final class ProviderScriptOrchestrationTests: XCTestCase {
             route("cycle_type=3", body: yearly),
             route("cycle_type=1", status: 401, body: "unauthorized"),
             route("/account/amount?page=1", body: #"{"data":{"records":[]}}"#),
-        ], hostname: "www.minimaxi.com", pathname: "/user-center/basic-information")
+        ], hostname: "platform.minimax.cn", pathname: "/console/usage")
         let aggregate = probe(run, "combo")
         XCTAssertEqual(aggregate["status"] as? Int, 200)
         let combo = try jsonObject(aggregate["body"] as? String)
@@ -236,7 +261,7 @@ final class ProviderScriptOrchestrationTests: XCTestCase {
             route("usage_summary", kind: "hang"),
             route("cycle_audio_resource_package", kind: "hang"),
             route("/account/amount", kind: "hang"),
-        ], hostname: "www.minimaxi.com", pathname: "/user-center/basic-information")
+        ], hostname: "platform.minimax.cn", pathname: "/console/usage")
         let aggregate = probe(run, "combo")
         XCTAssertEqual(aggregate["status"] as? Int, 200)
         let combo = try jsonObject(aggregate["body"] as? String)

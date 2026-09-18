@@ -471,9 +471,10 @@ enum ProviderScripts {
     function __mmHosts() {
         let hostname = '';
         try { hostname = String(location.hostname || ''); } catch (e) { hostname = ''; }
-        const intl = /minimax\.io$/i.test(hostname);
-        const host = intl ? 'https://www.minimax.io' : 'https://www.minimaxi.com';
-        let platform = intl ? 'https://platform.minimax.io' : 'https://platform.minimaxi.com';
+        // 国内站 2026-09 起 minimaxi.com 整体 302 到 minimax.cn，Cookie 落在 .minimax.cn。
+        const root = /minimax\.io$/i.test(hostname) ? 'minimax.io' : 'minimax.cn';
+        const host = 'https://www.' + root;
+        let platform = 'https://platform.' + root;
         try {
             if (hostname.indexOf('platform.') === 0 && typeof location.origin === 'string' && location.origin) {
                 platform = location.origin;

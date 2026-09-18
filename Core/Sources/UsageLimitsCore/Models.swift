@@ -147,7 +147,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .deepseek: return URL(string: "https://platform.deepseek.com")!
         case .zhipu: return URL(string: "https://open.bigmodel.cn")!
         case .kimi: return URL(string: "https://www.kimi.com")!
-        case .minimax: return URL(string: "https://platform.minimaxi.com")!
+        case .minimax: return URL(string: "https://platform.minimax.cn")!
         case .jimeng: return URL(string: "https://jimeng.jianying.com")!
         case .opencode: return URL(string: "https://opencode.ai")!
         case .longcat: return URL(string: "https://longcat.chat")!
@@ -178,7 +178,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .deepseek: return URL(string: "https://platform.deepseek.com/usage")!
         case .zhipu: return URL(string: "https://open.bigmodel.cn/coding-plan/personal/usage")!
         case .kimi: return URL(string: "https://www.kimi.com/code")!
-        case .minimax: return URL(string: "https://platform.minimaxi.com/console/usage")!
+        case .minimax: return URL(string: "https://platform.minimax.cn/console/usage")!
         case .jimeng: return URL(string: "https://jimeng.jianying.com/ai-tool/home")!
         case .opencode: return URL(string: "https://opencode.ai/auth")!
         case .longcat: return URL(string: "https://longcat.chat/platform/usage")!
@@ -209,7 +209,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .deepseek: return URL(string: "https://platform.deepseek.com/usage")!
         case .zhipu: return URL(string: "https://open.bigmodel.cn/coding-plan/personal/usage")!
         case .kimi: return URL(string: "https://www.kimi.com/code/console")!
-        case .minimax: return URL(string: "https://platform.minimaxi.com/console/usage")!
+        case .minimax: return URL(string: "https://platform.minimax.cn/console/usage")!
         case .jimeng: return URL(string: "https://jimeng.jianying.com/ai-tool/home")!
         case .opencode: return URL(string: "https://opencode.ai/auth")!
         case .longcat: return URL(string: "https://longcat.chat/platform/usage")!
@@ -239,7 +239,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .deepseek: return ["deepseek.com"]
         case .zhipu: return ["bigmodel.cn"]
         case .kimi: return ["kimi.com", "moonshot.cn"]
-        case .minimax: return ["minimaxi.com"]
+        case .minimax: return ["minimax.cn", "minimaxi.com"]
         case .jimeng: return ["jimeng.jianying.com", "jianying.com"]
         case .opencode: return ["opencode.ai"]
         case .longcat: return ["longcat.chat"]

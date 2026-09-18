@@ -73,13 +73,20 @@ final class CatalogTests: XCTestCase {
     }
 
     func testMiniMaxDomesticAndGlobalCookieDomainsAreExactAndDisjoint() {
-        XCTAssertEqual(ProviderID.minimax.cookieDomains, ["minimaxi.com"])
+        // minimax.cn 是现用域名；minimaxi.com 留着清旧 Cookie。
+        XCTAssertEqual(ProviderID.minimax.cookieDomains, ["minimax.cn", "minimaxi.com"])
+        // 老域名 302 到 minimax.cn，源门禁按 origin / probeURL 的主机判定，必须直接指向新域名。
+        for url in [ProviderID.minimax.origin, ProviderID.minimax.loginURL, ProviderID.minimax.probeURL] {
+            XCTAssertEqual(url.host, "platform.minimax.cn")
+        }
         XCTAssertEqual(ProviderID.minimaxGlobal.cookieDomains, ["minimax.io"])
-        XCTAssertTrue(
-            Set(ProviderID.minimax.cookieDomains)
-                .isDisjoint(with: Set(ProviderID.minimaxGlobal.cookieDomains)),
-            "退出登录与 Cookie 同步必须只处理当前 MiniMax 站点"
-        )
+        // WebViewFetcher 按 hasSuffix 匹配 Cookie 域：只比相等挡不住「一方是另一方后缀」。
+        for a in ProviderID.minimax.cookieDomains {
+            for b in ProviderID.minimaxGlobal.cookieDomains {
+                XCTAssertFalse(a.hasSuffix(b) || b.hasSuffix(a),
+                               "退出登录与 Cookie 同步必须只处理当前 MiniMax 站点：\(a) / \(b)")
+            }
+        }
     }
 
     func testListPriceProviderContextKeepsLegacyCallSourceCompatible() {

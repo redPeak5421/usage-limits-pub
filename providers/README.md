@@ -52,7 +52,7 @@ iPad 上各家的实际响应形状以真机验证为准；发现漂移按本文
 | DeepSeek | [deepseek.md](deepseek.md) | https://platform.deepseek.com/usage |
 | 智谱 | [zhipu.md](zhipu.md) | https://open.bigmodel.cn/coding-plan/personal/usage |
 | Kimi | [kimi.md](kimi.md) | https://www.kimi.com/code/console |
-| MiniMax（国内） | [minimax.md](minimax.md) | https://platform.minimaxi.com/console/usage |
+| MiniMax（国内） | [minimax.md](minimax.md) | https://platform.minimax.cn/console/usage |
 | MiniMax（国际） | [minimax.md](minimax.md) | https://platform.minimax.io/console/usage |
 | 即梦 | [jimeng.md](jimeng.md) | https://jimeng.jianying.com/ai-tool/home（个人页路径含运行时 sec_uid，禁止写死） |
 | OpenCode | [opencode.md](opencode.md) | https://opencode.ai/workspace/<wrk_id>（首页余额；`/go` 三窗口；入口 `/auth` 302 到 workspace） |
