@@ -11,6 +11,8 @@ struct DashboardFlatView: View {
     let showsDemoBanner: Bool
     /// 没有任何账号且不在演示模式：显示「添加供应商」空态。
     let showsEmptyHint: Bool
+    /// 空态里的演示模式按钮：只在演示关闭时随空态出现，打开后空态让位给演示卡，关闭要去设置。
+    @Binding var demoMode: Bool
     /// 展开的卡片集合由首页持有（标题一键折叠 / 展开、`--expand-cards` 都改它）。
     @Binding var expandedIDs: Set<DashboardSceneItemID>
     /// 深链 / 通知要滚到的卡；滚完由本视图清掉。
@@ -24,6 +26,7 @@ struct DashboardFlatView: View {
 
     @Environment(\.appLanguage) private var lang
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
     /// regular 宽度（iPad 竖 / 横屏、Stage Manager 大窗）铺多列；compact（iPhone、iPad 1/3 分屏）保持单列原版。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -130,7 +133,7 @@ struct DashboardFlatView: View {
         }
     }
 
-    /// 已添加账号按存储顺序展示，允许不同服务商穿插；演示橱窗卡排在后面。
+    /// 已添加账号按存储顺序展示，允许不同服务商穿插；演示模式只铺演示橱窗卡（按服务商顺序）。
     private var cardList: some View {
         ForEach(items) { item in
             card(item)
@@ -201,6 +204,7 @@ struct DashboardFlatView: View {
             isCustom: item.isCustom,
             customLogoData: item.customLogoData,
             customSubtitle: item.customSubtitle,
+            isDemo: item.isDemo,
             onEdit: item.onEdit,
             onReorderMetrics: item.onReorderMetrics,
             refreshGlow: item.refreshGlow && !reduceMotion,
@@ -395,15 +399,42 @@ struct DashboardFlatView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button(action: onAddProvider) {
-                Text(L10n.tr("providers.add", lang))
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 12) {
+                Button(action: onAddProvider) {
+                    Text(L10n.tr("providers.add", lang))
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .modifier(EmptyStateButtonStyle(prominent: true))
+                .controlSize(.large)
+                .padding(.horizontal, 32)
+                .accessibilityLabel(L10n.tr("providers.add", lang))
+                // 演示模式按钮：与添加按钮同形状 / 字号 / 宽度，次要强调；单向，首页不提供关闭入口。
+                // 两颗按钮 iOS 26 起走液态玻璃（.glassProminent / .glass），iOS 18–25 落回原描边样式，见 EmptyStateButtonStyle。
+                Button {
+                    withAnimation(expansionAnimation) { demoMode = true }
+                } label: {
+                    Text(L10n.tr("home.demo.enable", lang))
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .modifier(EmptyStateButtonStyle(prominent: false))
+                .controlSize(.large)
+                .padding(.horizontal, 32)
+                .accessibilityIdentifier("home.demoToggle")
+                Text(L10n.tr("home.demo.toggle.hint", lang))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 32)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .padding(.horizontal, 32)
-            .accessibilityLabel(L10n.tr("providers.add", lang))
+            .background {
+                // 纯色底上液态玻璃无物可折射；只在真正渲染玻璃时垫单色柔光（取主按钮同款强调色），回落样式保持原样。
+                if #available(iOS 26.0, *), !reduceTransparency {
+                    EmptyStateGlowBackdrop(tint: .accentColor)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
@@ -428,6 +459,25 @@ struct DashboardFlatView: View {
             .multilineTextAlignment(.center)
             .padding(.top, 6)
             .padding(.horizontal, 12)
+    }
+}
+
+/// 空态两颗胶囊按钮的系统样式：iOS 26 走液态玻璃（.glassProminent / .glass），iOS 18–25 落回描边样式（.borderedProminent / .bordered）。
+private struct EmptyStateButtonStyle: ViewModifier {
+    let prominent: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if prominent {
+                content.buttonStyle(.glassProminent)
+            } else {
+                content.buttonStyle(.glass)
+            }
+        } else if prominent {
+            content.buttonStyle(.borderedProminent)
+        } else {
+            content.buttonStyle(.bordered)
+        }
     }
 }
 

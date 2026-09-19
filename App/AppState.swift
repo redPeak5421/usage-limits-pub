@@ -416,7 +416,8 @@ final class AppState: ObservableObject {
         customTemplates = store.customTemplates
         var dict: [ProviderID: ProviderSnapshot] = [:]
         if demoMode {
-            // 演示模式是橱窗：全部服务商都展示演示数据，不受「已添加」限制。
+            // 演示模式是纯橱窗：全部服务商都用演示数据，不受「已添加」限制；
+            // 首页隐藏用户自己的服务商，只铺演示卡（DashboardView.sceneItems）。
             for snap in SharedStore.demoSnapshots(now: Date()) {
                 dict[snap.provider] = snap
             }
@@ -429,7 +430,7 @@ final class AppState: ObservableObject {
         var accountDict: [UUID: ProviderSnapshot] = [:]
         for account in accounts where !account.isPrimary {
             if account.isCustom {
-                // D9：演示橱窗只留内置供应商，隐藏真实自定义卡。
+                // 演示模式隐藏用户自己的服务商：自定义账号没有演示数据可借，不给快照。
                 if demoMode { continue }
                 accountDict[account.id] = store.accountSnapshot(for: account.id)
             } else if demoMode, let provider = account.provider {
@@ -486,7 +487,8 @@ final class AppState: ObservableObject {
     }
 
 
-    /// 首页是否显示该服务商的主卡：演示模式未添加的仍橱窗展示；已添加则尊重停用。
+    /// 首页是否显示该服务商的真实主卡：只认已添加的主账号，并尊重停用。
+    /// 演示模式隐藏用户自己的服务商，首页只铺演示卡（DashboardView.sceneItems），不经过这里。
     func showsPrimaryCard(_ provider: ProviderID?) -> Bool {
         guard let provider, ProviderAvailability.isAvailable(provider) else { return false }
         if let primary = primaryAccount(provider) {
@@ -494,10 +496,11 @@ final class AppState: ObservableObject {
                 primary, providerEnabled: enabledProviders.contains(provider)
             )
         }
-        return demoMode
+        return false
     }
 
-    /// 首页是否显示该附加账号：停用账号或所属服务商停用时隐藏。
+    /// 首页是否显示该附加 / 自定义账号：停用账号或所属服务商停用时隐藏。
+    /// 演示模式隐藏用户自己的服务商（首页整体跳过真实账号）；这里对自定义账号再兜一层。
     func showsAccount(_ account: ProviderAccount) -> Bool {
         if account.isCustom && demoMode { return false }
         return AccountVisibility.shouldShowOnHome(
@@ -532,6 +535,7 @@ final class AppState: ObservableObject {
     /// Widget / Watch / 提醒即刻生效）；已有主账号则追加独立 dataStore 的附加账号。
     @discardableResult
     func addAccount(provider: ProviderID, name: String) -> ProviderAccount {
+        exitDemoModeForNewAccount()
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let account: ProviderAccount
         if primaryAccount(provider) == nil {
@@ -549,6 +553,14 @@ final class AppState: ObservableObject {
         }
         store.appendDiagnostic("\(provider.rawValue): 新增账号「\(account.displayName)」")
         return account
+    }
+
+    /// 添加任一服务商（内置或自定义）即自动关闭演示模式。要在写入账号之前调：
+    /// `demoMode` 的 didSet 负责落盘、重载、刷新小组件与手表，之后的重载读到的就是真实数据。
+    private func exitDemoModeForNewAccount() {
+        guard demoMode else { return }
+        demoMode = false
+        store.appendDiagnostic("演示模式: 新增服务商，自动关闭")
     }
 
     func renameAccount(_ id: UUID, to name: String) {
@@ -903,6 +915,7 @@ final class AppState: ObservableObject {
 
     @discardableResult
     func addCustomAccount(template: CustomUsageTemplate, name: String, token: String) -> ProviderAccount {
+        exitDemoModeForNewAccount()
         if store.customTemplate(id: template.id) == nil {
             store.customTemplates = store.customTemplates + [template]
         }
@@ -964,7 +977,7 @@ final class AppState: ObservableObject {
         pendingDeepLink = nil
     }
 
-    /// 待定位的首页卡片：按当前账号表把深链换算成场景项（主账号 → `.account`，演示态没账号 → `.demo`）。
+    /// 待定位的首页卡片：按当前账号表把深链换算成场景项（主账号 → `.account`；演示态首页只有演示卡 → `.demo`）。
     var pendingRevealTarget: DashboardSceneItemID? {
         pendingDeepLink?.revealTarget(accounts: accounts, demoMode: demoMode)
     }
@@ -973,6 +986,8 @@ final class AppState: ObservableObject {
     private var refreshAllTask: Task<Void, Never>?
 
     func refreshAll() async {
+        // 演示模式是纯橱窗：不对首页隐藏的真实账号发探针
+        guard !demoMode else { return }
         if let inFlight = refreshAllTask {
             await inFlight.value
             return

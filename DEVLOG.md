@@ -339,3 +339,15 @@
 - 处理：先改 `providers/minimax.md` 与索引（迁移实测、三行主机推导表、Cookie 边界）；三个 URL 改 `platform.minimax.cn`；`cookieDomains` 改为 `minimax.cn` + `minimaxi.com`（后者只为退出登录时清掉旧 Cookie，仍与国际站 `minimax.io` 互斥）；探针按页面所在域推导 `www` / `platform`：`minimax.io` → 国际站，其余一律 `minimax.cn`（老域名到不了脚本：源门禁先判漂移）。
 - 验证：新增 `testMiniMaxDomesticSiteOnMinimaxCnKeepsEveryRequestOnMinimaxCn`（在 `platform.minimax.cn` 真跑生产脚本，6 个请求全部留在 `minimax.cn`）并收紧 `CatalogTests` 的域名断言，两条先红后绿；独立 review 后补国际站 `platform.minimax.io` 同形测试，原来三条编排测试的执行页从生产走不到的 `www.minimaxi.com` 改为 `platform.minimax.cn`，Cookie 域互斥改按后缀判定（`WebViewFetcher` 用 `hasSuffix` 匹配）。Core 除 `CustomUsageStoreTests` 外 1201 项全绿；这一组在本机 macOS 27 上稳定失败——测试把 logo 写进真实 App Group 容器，系统连 `ls` 都拒绝（`Operation not permitted`），与本改动无关，且其中强制解包会让 xctest 崩掉、后面的测试不跑，需要 `--skip` 才能跑完。真机登录态复验待用户确认。
 - 本轮计一项修复，z +1；1.5.602 已被当天另一个 TestFlight 构建占用，故取 1.5.603。
+
+## 2026-09-19 · 演示模式改为纯橱窗：首页空态可开、加服务商自动关、隐藏自己的服务商（1.5.606）
+
+- 需求：首页没有供应商时直接给演示模式开关，开后首页不给关（横幅提示去设置关）；新增任意服务商（内置或自定义）自动关闭演示；手动开演示时首页隐藏用户自己的服务商。
+- 开发中踩到的问题：原来演示态只给「未添加」的服务商补演示卡，已添加的主号照常显示；改成隐藏真实账号后，每家都有演示卡，而演示卡沿用了真实的 `state.logout(provider)` / `LoginRequest(provider:)` / `state.refresh(provider)`——主号与服务商级链路共用 default dataStore，在演示卡上点「退出登录」会清掉被隐藏的真实账号登录态；拖动演示卡还会经 `state.setOrder` 改写真实 `providerOrder` 并推到手表；演示卡取 `resolvedTint(provider:)` 会透出用户自定义色。独立 review 发现，未发布。
+- 处理：`AppState.addAccount` / `addCustomAccount` 写账号前先 `exitDemoModeForNewAccount()`；`DashboardView.sceneItems` 演示态跳过全部真实账号，只铺 `.demo` 卡，演示卡登录 / 刷新 / 登出为空操作、`ProviderCardView(isDemo:)` 菜单只留分享、卡内登录与重试按钮不出，色取品牌默认；演示排序只记会话内 `demoProviderOrder`，关演示即清；演示态 `refreshAll` 直接返回；深链演示态一律换算到 `.demo(provider)`（自定义账号 nil）。平铺与轮盘 / 螺旋两套空态都加开关，场景空态开关挂 `dashboardSceneControlRegion`；设置页说明限定「首页」——小组件 / 手表的演示行为未改（仍按账号列表显示演示数字）。
+- 验证：`DemoModeSourceTests`（7 条）锁加号退演示、演示卡惰性、排序不落盘、refreshAll 守卫；`AppDeepLinkTests` 按新语义改写并补账号链接用例。Core 除 `CustomUsageStoreTests`（本机 App Group 写入被拒，见上条）外 1210 项全绿；模拟器（专用设备）截图确认平铺 / 轮盘空态开关、深浅色、大字号换行，注入名为「我的工作号」的附加账号后开演示即不可见。本机无模拟器点按工具，开关点按与新增服务商自动关演示两条交互未在 UI 上实点，由契约测试覆盖。
+- 本轮计三项功能，z +3。
+- 1.5.607：按用户反馈，空态的演示开关改为与「新增供应商」同款的胶囊按钮（次要样式）「开启演示模式」，说明文字放按钮下方；z +1。
+- 1.5.608：按用户反馈，空态「新增供应商」「开启演示模式」两颗按钮改为 iOS 26 液态玻璃（平铺用系统 .glassProminent / .glass，轮盘 / 螺旋用 glassEffect，主按钮按主题强调色着色）；iOS 18–25 与「降低透明度」回落原样式；z +1。
+- 1.5.609：用户反馈「看不出玻璃效果」——纯色底上液态玻璃无物可折射，近似实色胶囊；空态按钮组背后加静态彩色光晕（EmptyStateGlowBackdrop，仅 iOS 26 且未开降低透明度时出现，不拦点击、无常驻动画）；z +1。
+- 1.5.610：用户反馈多色光晕「像猴子屁股」——粉 / 橙色块叠在无色玻璃后显脏；改为单色柔光（平铺蓝、轮盘 / 螺旋金），一整片向外渐隐的椭圆渐变，无色块；z +1。

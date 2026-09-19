@@ -32,19 +32,27 @@ public enum AppDeepLink: Equatable {
         return nil
     }
 
-    /// 首页要定位的场景项：账号链接就是那张账号卡；服务商链接定位该服务商主账号卡（没有主账号退到任一账号卡），
-    /// 一个账号都没有时只有演示态才有卡可去（`.demo`）。总览不定位。
+    /// 首页要定位的场景项。演示态下首页不再展示任何真实账号卡，只铺演示卡（纯橱窗），
+    /// 所以链接一律换算到演示卡：服务商链接直接定位该服务商演示卡；账号链接若能在 `accounts`
+    /// 中查到——内置服务商换算到该服务商演示卡，自定义账号没有对应演示卡，定位不到（nil）。
+    /// 非演示态维持旧语义：服务商链接定位该服务商主账号卡（没有主账号退到任一账号卡，
+    /// 一个账号都没有时才落到 nil）；账号链接就是那张账号卡。总览不定位。
     public func revealTarget(accounts: [ProviderAccount], demoMode: Bool) -> DashboardSceneItemID? {
         switch self {
         case .home:
             return nil
         case .account(let id):
+            if demoMode, let account = accounts.first(where: { $0.id == id }) {
+                if let provider = account.provider { return .demo(provider) }
+                return nil
+            }
             return .account(id)
         case .provider(let provider):
+            if demoMode { return .demo(provider) }
             let account = accounts.first { $0.provider == provider && $0.isPrimary }
                 ?? accounts.first { $0.provider == provider }
             if let account { return .account(account.id) }
-            return demoMode ? .demo(provider) : nil
+            return nil
         }
     }
 }

@@ -37,8 +37,8 @@ final class AppDeepLinkTests: XCTestCase {
         )
         XCTAssertEqual(
             AppDeepLink.provider(.openai).revealTarget(accounts: accounts, demoMode: true),
-            .account(other.id),
-            "有真实账号时演示态也定位到账号卡"
+            .demo(.openai),
+            "演示态隐藏真实账号，服务商链接定位演示卡"
         )
         XCTAssertEqual(
             AppDeepLink.provider(.claude).revealTarget(accounts: [extra], demoMode: false),
@@ -56,5 +56,29 @@ final class AppDeepLinkTests: XCTestCase {
         let id = UUID()
         XCTAssertEqual(AppDeepLink.account(id).revealTarget(accounts: [], demoMode: true), .account(id))
         XCTAssertNil(AppDeepLink.home.revealTarget(accounts: [], demoMode: true))
+    }
+
+    func testAccountLinkInDemoModeRewritesToDemoCardOrNilForCustom() {
+        let builtinExtra = ProviderAccount(provider: .grok, name: "Grok 2")
+        let custom = ProviderAccount(source: .custom(templateID: UUID()), name: "x")
+        let accounts = [builtinExtra, custom]
+
+        XCTAssertEqual(
+            AppDeepLink.account(builtinExtra.id).revealTarget(accounts: accounts, demoMode: true),
+            .demo(.grok),
+            "演示态下已知内置账号链接换算到该服务商演示卡"
+        )
+        XCTAssertNil(
+            AppDeepLink.account(custom.id).revealTarget(accounts: accounts, demoMode: true),
+            "演示态下自定义账号没有对应演示卡，定位不到"
+        )
+        XCTAssertEqual(
+            AppDeepLink.account(builtinExtra.id).revealTarget(accounts: accounts, demoMode: false),
+            .account(builtinExtra.id)
+        )
+        XCTAssertEqual(
+            AppDeepLink.account(custom.id).revealTarget(accounts: accounts, demoMode: false),
+            .account(custom.id)
+        )
     }
 }

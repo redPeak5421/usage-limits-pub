@@ -29,6 +29,8 @@ struct ProviderCardView: View {
     var customLogoData: Data? = nil
     /// 抬头下元信息：模板名或 host。仅自定义卡使用。
     var customSubtitle: String? = nil
+    /// 演示橱窗卡：「…」菜单只留分享，卡内也不出登录 / 重试按钮，碰不到被隐藏的真实账号。
+    var isDemo: Bool = false
     /// 自定义卡：「…」菜单打开编辑向导。内置卡保持 nil。
     var onEdit: (() -> Void)? = nil
     /// 「…」→ 编辑计量顺序（只有 ≥2 条计量时首页才传入）。
@@ -71,6 +73,7 @@ struct ProviderCardView: View {
         isCustom: Bool = false,
         customLogoData: Data? = nil,
         customSubtitle: String? = nil,
+        isDemo: Bool = false,
         onEdit: (() -> Void)? = nil,
         onReorderMetrics: (() -> Void)? = nil,
         refreshGlow: Bool = false,
@@ -95,6 +98,7 @@ struct ProviderCardView: View {
         self.isCustom = isCustom
         self.customLogoData = customLogoData
         self.customSubtitle = customSubtitle
+        self.isDemo = isDemo
         self.onEdit = onEdit
         self.onReorderMetrics = onReorderMetrics
         self.refreshGlow = refreshGlow
@@ -347,18 +351,21 @@ struct ProviderCardView: View {
         }
         Button(L10n.tr("card.share", lang), systemImage: "square.and.arrow.up", action: onShare)
             .dashboardSceneControlRegion()
-        Button(L10n.tr("card.refresh", lang), systemImage: "arrow.clockwise", action: onRefresh)
-            .dashboardSceneControlRegion()
-        if isCustom {
-            Button(L10n.tr("card.updateToken", lang), systemImage: "key", action: onLogin)
+        // 演示卡是纯橱窗：同服务商的真实账号被隐藏着，刷新 / 重新登录 / 登出都会落到它身上，一律不给。
+        if !isDemo {
+            Button(L10n.tr("card.refresh", lang), systemImage: "arrow.clockwise", action: onRefresh)
                 .dashboardSceneControlRegion()
-            Button(L10n.tr("custom.logout", lang), systemImage: "trash", role: .destructive, action: onLogout)
-                .dashboardSceneControlRegion()
-        } else {
-            Button(L10n.tr("card.relogin", lang), systemImage: "person.crop.circle.badge.plus", action: onLogin)
-                .dashboardSceneControlRegion()
-            Button(L10n.tr("card.logout", lang), systemImage: "trash", role: .destructive, action: onLogout)
-                .dashboardSceneControlRegion()
+            if isCustom {
+                Button(L10n.tr("card.updateToken", lang), systemImage: "key", action: onLogin)
+                    .dashboardSceneControlRegion()
+                Button(L10n.tr("custom.logout", lang), systemImage: "trash", role: .destructive, action: onLogout)
+                    .dashboardSceneControlRegion()
+            } else {
+                Button(L10n.tr("card.relogin", lang), systemImage: "person.crop.circle.badge.plus", action: onLogin)
+                    .dashboardSceneControlRegion()
+                Button(L10n.tr("card.logout", lang), systemImage: "trash", role: .destructive, action: onLogout)
+                    .dashboardSceneControlRegion()
+            }
         }
     }
 
@@ -452,7 +459,7 @@ struct ProviderCardView: View {
                        let resets = snap.grokUsageResets {
                         GrokUsageResetsView(summary: resets)
                     }
-                    if !isCustom, snap.isAnonymous == true {
+                    if !isCustom, !isDemo, snap.isAnonymous == true {
                         Button {
                             onLogin()
                         } label: {
@@ -478,30 +485,34 @@ struct ProviderCardView: View {
                 Label(L10n.trError(message, lang), systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .foregroundStyle(.red)
-                Button(L10n.tr("card.retry", lang), action: onRefresh)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .dashboardSceneControlRegion()
+                if !isDemo {
+                    Button(L10n.tr("card.retry", lang), action: onRefresh)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .dashboardSceneControlRegion()
+                }
             }
         default:
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.tr(isCustom ? "custom.noNumeric" : "card.notLoggedIn", lang))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Button {
-                    onLogin()
-                } label: {
-                    if isCustom {
-                        Label(L10n.tr("card.updateToken", lang), systemImage: "key")
-                    } else {
-                        Label(L10n.tr("card.login", lang, provider.origin.host ?? provider.localizedName(lang)),
-                              systemImage: "person.crop.circle")
+                if !isDemo {
+                    Button {
+                        onLogin()
+                    } label: {
+                        if isCustom {
+                            Label(L10n.tr("card.updateToken", lang), systemImage: "key")
+                        } else {
+                            Label(L10n.tr("card.login", lang, provider.origin.host ?? provider.localizedName(lang)),
+                                  systemImage: "person.crop.circle")
+                        }
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .tint(resolvedTint.representativeColor)
+                    .dashboardSceneControlRegion()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(resolvedTint.representativeColor)
-                .dashboardSceneControlRegion()
             }
         }
     }

@@ -32,6 +32,9 @@ struct DashboardView: View {
     /// 平铺主题：展开的卡片集合与深链要滚到的卡（场景主题由 carousel 持有对应状态）。
     @State private var flatExpandedIDs: Set<DashboardSceneItemID> = []
     @State private var flatRevealTarget: DashboardSceneItemID?
+    /// 演示卡拖动后的顺序，只活在本次会话：真实 providerOrder 会落盘并推到手表，演示排序不能改写它。
+    /// 关闭演示模式即清空。
+    @State private var demoProviderOrder: [ProviderID]?
 
     var body: some View {
         let items = sceneItems
@@ -51,6 +54,8 @@ struct DashboardView: View {
                         layout: layout,
                         model: carousel,
                         showsDemoBanner: state.demoMode,
+                        showsDemoToggle: state.visibleAccounts.isEmpty && !state.demoMode,
+                        demoMode: $state.demoMode,
                         onRefreshAll: { Task { await state.refreshAll() } },
                         onAddProvider: { showAddProvider = true },
                         onCommitAccountOrder: commitAccountOrder,
@@ -61,6 +66,7 @@ struct DashboardView: View {
                         items: items,
                         showsDemoBanner: state.demoMode,
                         showsEmptyHint: state.visibleAccounts.isEmpty && !state.demoMode,
+                        demoMode: $state.demoMode,
                         expandedIDs: $flatExpandedIDs,
                         revealTarget: $flatRevealTarget,
                         onRefreshAll: { await state.refreshAll() },
@@ -227,6 +233,9 @@ struct DashboardView: View {
             .onChange(of: state.dashboardTheme) { _, theme in
                 sideKey.currentTheme = theme
             }
+            .onChange(of: state.demoMode) { _, isOn in
+                if !isOn { demoProviderOrder = nil }
+            }
         }
     }
 
@@ -247,13 +256,12 @@ struct DashboardView: View {
     private var sceneItems: [DashboardSceneItem] {
         var items: [DashboardSceneItem] = []
         items.reserveCapacity(state.accounts.count + state.providerOrder.count)
-        var seenPrimaryProviders = Set<ProviderID>()
 
-        for account in state.visibleAccounts {
+        // 演示模式是纯橱窗：隐藏用户自己的服务商（内置主号、附加号、自定义都跳过），只铺下面的演示卡。
+        for account in state.visibleAccounts where !state.demoMode {
             switch account.source {
             case .builtin(let provider):
                 if account.isPrimary {
-                    seenPrimaryProviders.insert(provider)
                     guard state.showsPrimaryCard(account.provider) else { continue }
                     let snapshot = state.snapshot(provider)
                     let title = state.store.displayName(for: account)
@@ -360,25 +368,32 @@ struct DashboardView: View {
         }
 
         if state.demoMode {
-            for provider in state.availableProviders where !seenPrimaryProviders.contains(provider) {
+            // 演示排序只用会话内的 demoProviderOrder：只留仍可用的服务商，缺的按 availableProviders 顺序补到末尾。
+            let available = state.availableProviders
+            var demoProviders = (demoProviderOrder ?? []).filter { available.contains($0) }
+            for provider in available where !demoProviders.contains(provider) {
+                demoProviders.append(provider)
+            }
+            for provider in demoProviders {
                 let snapshot = state.snapshot(provider)
                 let title = provider.localizedName(lang)
+                // 演示卡是纯橱窗，不能对被隐藏的真实账号登录 / 登出 / 刷新，也不透出用户自定义色。
                 items.append(DashboardSceneItem(
                     id: DashboardSceneItemID.demo(provider),
                     source: .demo(provider: provider),
                     snapshot: snapshot,
                     title: title,
-                    tint: state.resolvedTint(provider: provider),
-                    isRefreshing: state.refreshing.contains(provider),
+                    tint: TintResolver.resolve(accountTint: nil, provider: provider, overrides: [:]),
+                    isRefreshing: false,
                     canExpand: ProviderCardView.canExpand(snapshot: snapshot),
                     refreshGlow: refreshGlowEnabled,
                     tintedBars: tintedBarsEnabled,
                     barShimmer: barShimmerEnabled,
                     customLogoData: nil,
                     customSubtitle: nil,
-                    onLogin: { loginRequest = LoginRequest(provider: provider) },
-                    onRefresh: { Task { await state.refresh(provider) } },
-                    onLogout: { Task { await state.logout(provider) } },
+                    onLogin: {},
+                    onRefresh: {},
+                    onLogout: {},
                     onShare: {
                         if let item = shareCard(account: nil, provider: provider) {
                             beginShare(selected: [item], isGlobal: false)
@@ -496,23 +511,8 @@ struct DashboardView: View {
             rollbackCarouselOrder()
             return
         }
-
-        let visibleSet = Set(visibleDemoProviders)
-        var next = state.providerOrder
-        var replacementIndex = 0
-        for index in next.indices where visibleSet.contains(next[index]) {
-            guard orderedProviders.indices.contains(replacementIndex) else {
-                rollbackCarouselOrder()
-                return
-            }
-            next[index] = orderedProviders[replacementIndex]
-            replacementIndex += 1
-        }
-        guard replacementIndex == orderedProviders.count else {
-            rollbackCarouselOrder()
-            return
-        }
-        state.setOrder(next)
+        // 演示卡铺满全部可用服务商，校验过的顺序就是完整演示顺序；只记在会话里，不改写真实 providerOrder。
+        demoProviderOrder = orderedProviders
     }
 
     /// 场景：把轮盘目录拉回存储顺序。平铺列表直接照 state 渲染，被拒的排序本来就没落盘，无需处理。

@@ -1067,8 +1067,8 @@ public enum L10n {
             .fr: "Jetons", .ru: "Токены",
         ],
         "demo.banner": [
-            .zh: "演示模式已开启，以下为示例数据", .zhHant: "示範模式已開啟，以下為範例資料", .en: "Demo mode is on — sample data below", .ja: "デモモード有効。以下はサンプルデータです",
-            .fr: "Mode démo activé — données d'exemple ci-dessous", .ru: "Демо-режим включён — ниже примерные данные",
+            .zh: "演示模式已开启，以下为示例数据；可在设置中关闭", .zhHant: "示範模式已開啟，以下為範例資料；可在設定中關閉", .en: "Demo mode is on — sample data below. Turn it off in Settings", .ja: "デモモードがオンです。以下はサンプルデータです。設定でオフにできます",
+            .fr: "Le mode démo est activé — données d'exemple ci-dessous. Désactivez-le dans Réglages", .ru: "Демо-режим включён — ниже примерные данные. Отключить можно в настройках",
         ],
         "diagnostics.clear": [
             .zh: "清空", .zhHant: "清空", .en: "Clear", .ja: "消去",
@@ -1151,6 +1151,14 @@ public enum L10n {
             .ja: "送信元：Usage Limits\n\n以下にフィードバックをご記入ください：\n\n",
             .fr: "Source : Usage Limits\n\nDécrivez vos commentaires ci-dessous :\n\n",
             .ru: "Источник: Usage Limits\n\nОпишите ваш отзыв ниже:\n\n",
+        ],
+        "home.demo.enable": [
+            .zh: "开启演示模式", .zhHant: "開啟示範模式", .en: "Try demo mode", .ja: "デモモードを試す",
+            .fr: "Essayer le mode démo", .ru: "Попробовать демо-режим",
+        ],
+        "home.demo.toggle.hint": [
+            .zh: "先用示例数据看看效果；新增任一供应商后自动关闭。", .zhHant: "先用範例資料看看效果；新增任一供應商後自動關閉。", .en: "Try it with sample data first. Turns off once you add a provider.", .ja: "まずはサンプルデータで試してみましょう。プロバイダを追加すると自動的にオフになります。",
+            .fr: "Essayez d'abord avec des données d'exemple. Se désactive dès l'ajout d'un fournisseur.", .ru: "Сначала попробуйте с примерными данными. Отключится, как только вы добавите провайдера.",
         ],
         "jimeng.creditsUnavailable": [
             .zh: "积分暂未获取到", .zhHant: "點數暫未取得", .en: "Credits not available yet", .ja: "ポイントを取得できませんでした",
@@ -1521,8 +1529,8 @@ public enum L10n {
             .fr: "Mode démo", .ru: "Демо-режим",
         ],
         "settings.demo.footer": [
-            .zh: "用示例数据预览，不影响真实数据。", .zhHant: "用範例資料預覽，不影響真實資料。", .en: "Preview with sample data. Real data is untouched.", .ja: "サンプルデータでプレビュー。実データは変わりません。",
-            .fr: "Aperçu avec des données d'exemple. Les vraies données restent intactes.", .ru: "Предпросмотр на примерных данных. Реальные данные не меняются.",
+            .zh: "首页只显示示例数据，暂时隐藏你添加的服务商；添加服务商后自动关闭。不影响真实数据。", .zhHant: "首頁只顯示範例資料，暫時隱藏你新增的服務商；新增服務商後自動關閉。不影響真實資料。", .en: "The home screen shows sample data only and hides your providers for now. Turns off when you add a provider. Real data is untouched.", .ja: "ホーム画面にはサンプルデータのみを表示し、追加済みのプロバイダを一時的に非表示にします。プロバイダを追加すると自動的にオフになります。実際のデータには影響しません。",
+            .fr: "L'écran d'accueil n'affiche que des données d'exemple et masque temporairement vos fournisseurs. Se désactive automatiquement dès l'ajout d'un fournisseur. Vos données réelles restent intactes.", .ru: "Главный экран показывает только примерные данные и временно скрывает добавленных вами провайдеров. Отключается автоматически при добавлении провайдера. На реальные данные это не влияет.",
         ],
         "settings.diagLog": [
             .zh: "探针诊断日志", .zhHant: "探針診斷記錄", .en: "Probe diagnostic log", .ja: "プローブ診断ログ",

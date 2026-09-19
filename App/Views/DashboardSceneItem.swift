@@ -41,6 +41,12 @@ struct DashboardSceneItem: Identifiable {
         return false
     }
 
+    /// 演示橱窗卡：卡片上不给刷新 / 重新登录 / 登出，只留分享。
+    var isDemo: Bool {
+        if case .demo = source { return true }
+        return false
+    }
+
     var reorderDomain: DashboardReorderDomain {
         id.domain
     }

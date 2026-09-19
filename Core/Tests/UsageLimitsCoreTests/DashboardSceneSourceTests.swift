@@ -300,13 +300,29 @@ final class DashboardSceneSourceTests: XCTestCase {
         )
         let compact = normalized(emptyState)
         XCTAssertTrue(compact.contains(".buttonStyle(.plain)"))
-        XCTAssertTrue(compact.contains("Capsule()"))
+        XCTAssertTrue(compact.contains(".contentShape(Capsule())"))
         XCTAssertTrue(compact.contains("theme.metalAccent"))
-        XCTAssertTrue(compact.contains("theme.primaryForeground"))
+        // 主按钮的材质挪进了 EmptyStateCapsuleSurface（iOS 26 液态玻璃 / 老系统胶囊描边填充），
+        // 空态视图本身只负责传入 theme，不再直接持有 foregroundStyle / Capsule 字面量。
+        XCTAssertTrue(
+            compact.contains(".modifier(EmptyStateCapsuleSurface(prominent:true,theme:theme,reduceTransparency:reduceTransparency))"),
+            "add button must delegate its material to EmptyStateCapsuleSurface"
+        )
         XCTAssertFalse(
             compact.contains(".buttonStyle(.borderedProminent)"),
             "the empty CTA must not fall back to system-blue styling"
         )
+
+        let surface = try slice(
+            carousel,
+            from: "private struct EmptyStateCapsuleSurface: ViewModifier {",
+            to: "@MainActor\nprivate struct DashboardSceneAccessibilityModifier"
+        )
+        // 主按钮的着色仍然完全由 theme 决定：iOS 26 液态玻璃用 pageBackground 顶字、metalAccent 着色，
+        // 老系统落回原本的 isDark 三元式，两条路径都不能出现硬编码系统色。
+        XCTAssertTrue(surface.contains("theme.primaryForeground"), "add button styling must stay theme-owned, not hardcoded")
+        XCTAssertTrue(surface.contains("theme.pageBackground"))
+        XCTAssertTrue(surface.contains("theme.metalAccent"))
     }
 
 
@@ -837,7 +853,6 @@ final class DashboardSceneSourceTests: XCTestCase {
             "state.showsAccount(account)",
             "DashboardSceneItemID.account",
             "DashboardSceneItemID.demo",
-            "seenPrimaryProviders.insert(provider)",
             "let snapshot = state.snapshot(provider)",
             "let snapshot = state.accountSnapshots[account.id]",
             "ProviderCardView.canExpand(snapshot: snapshot)",
@@ -847,13 +862,8 @@ final class DashboardSceneSourceTests: XCTestCase {
         ] {
             XCTAssertTrue(scene.contains(token), "missing canonical scene contract \(token)")
         }
-        let recordedPrimary = try XCTUnwrap(scene.range(of: "seenPrimaryProviders.insert(provider)"))
-        let primaryGate = try XCTUnwrap(scene.range(of: "state.showsPrimaryCard(account.provider)"))
-        XCTAssertLessThan(
-            recordedPrimary.lowerBound,
-            primaryGate.lowerBound,
-            "hidden primary providers must still suppress duplicate demo cards"
-        )
+        // 演示模式是纯橱窗：真实账号整体让位、演示卡铺满全部服务商，不会重复，无需再按主号去重（细节见 DemoModeSourceTests）
+        XCTAssertFalse(scene.contains("seenPrimaryProviders"), "demo showcase no longer interleaves with real primaries")
 
         XCTAssertTrue(dashboard.contains("@StateObject private var carousel = DashboardCarouselModel()"))
         // 布局来自首页主题偏好，配色跟随外观深浅色；平铺时导航栏回到系统默认
@@ -1013,25 +1023,23 @@ final class DashboardSceneSourceTests: XCTestCase {
             "orderedProviders.count == visibleDemoProviders.count",
             "Set(orderedProviders).count == orderedProviders.count",
             "Set(orderedProviders) == Set(visibleDemoProviders)",
-            "for index in next.indices where visibleSet.contains(next[index])",
-            "guard orderedProviders.indices.contains(replacementIndex)",
-            "guard replacementIndex == orderedProviders.count",
             "rollbackCarouselOrder()",
-            "state.setOrder(next)",
+            "demoProviderOrder = orderedProviders",
         ] {
             XCTAssertTrue(demoCommit.contains(token), "demo commit omitted \(token)")
         }
         XCTAssertFalse(demoCommit.contains("compactMap"))
-        let demoCompletion = try XCTUnwrap(
-            demoCommit.range(of: "guard replacementIndex == orderedProviders.count")
+        // 演示排序只记在会话内的 demoProviderOrder：真实 providerOrder 会落盘并推手表，演示拖动不得改写它（见 DemoModeSourceTests）
+        XCTAssertFalse(demoCommit.contains("state.setOrder"), "demo reorder must not persist into the real providerOrder")
+        let demoValidation = try XCTUnwrap(
+            demoCommit.range(of: "Set(orderedProviders) == Set(visibleDemoProviders)")
         )
-        let demoPersistence = try XCTUnwrap(demoCommit.range(of: "state.setOrder(next)"))
-        XCTAssertLessThan(demoCompletion.lowerBound, demoPersistence.lowerBound)
-        XCTAssertEqual(demoCommit.components(separatedBy: "state.setOrder").count - 1, 1)
+        let demoApply = try XCTUnwrap(demoCommit.range(of: "demoProviderOrder = orderedProviders"))
+        XCTAssertLessThan(demoValidation.lowerBound, demoApply.lowerBound, "demo order applies only after validation")
         XCTAssertGreaterThanOrEqual(
             demoCommit.components(separatedBy: "rollbackCarouselOrder()").count - 1,
-            3,
-            "every demo validation/replacement failure must roll preview back"
+            1,
+            "a rejected demo order must roll the preview back"
         )
 
         let rollback = try slice(

@@ -287,7 +287,9 @@ final class AccountTests: XCTestCase {
         XCTAssertFalse(customBody.contains("usedPercent:"), "占比条不得写回 UsageMetric.usedPercent")
         XCTAssertTrue(dashboard.contains("collapseAndFocus"), "深链必须收起当前卡再聚焦目标")
         XCTAssertTrue(dashboard.contains("state.applyAccountOrder"), "scene 账号排序必须一次持久化完整结果")
-        XCTAssertTrue(dashboard.contains("state.setOrder"), "scene 演示排序必须一次持久化完整结果")
+        // 演示卡排序只活在会话内（纯橱窗，不改写会落盘、推手表的真实 providerOrder）
+        XCTAssertTrue(dashboard.contains("demoProviderOrder = orderedProviders"), "scene 演示排序必须一次应用完整结果")
+        XCTAssertFalse(dashboard.contains("state.setOrder"), "演示排序不得写回真实 providerOrder")
         XCTAssertTrue(providers.contains("state.accounts"), "设置页账号列表不得用 providerOrder.flatMap 重新聚组")
         XCTAssertFalse(providers.contains("flatMap"), "设置页拖动后不能按服务商重排回去")
         XCTAssertTrue(dashboard.contains("let title = state.store.displayName(for: account)"), "账号卡片标题须走本地化 displayName")

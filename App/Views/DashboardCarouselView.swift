@@ -51,6 +51,9 @@ struct DashboardCarouselView: View {
     let layout: DashboardSceneLayout
     @ObservedObject private var model: DashboardCarouselModel
     let showsDemoBanner: Bool
+    /// 一个服务商都没添加且不在演示模式：空态里给演示模式按钮（账号全停用导致的空态不给）。
+    let showsDemoToggle: Bool
+    @Binding private var demoMode: Bool
     let onRefreshAll: @MainActor () -> Void
     let onAddProvider: () -> Void
     let onCommitAccountOrder: ([UUID]) -> Void
@@ -65,6 +68,7 @@ struct DashboardCarouselView: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
     /// 卡片放大只认宽度 size class：regular = iPad 全屏 / 竖屏 / 大窗；compact = 所有 iPhone 与窄分屏。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -84,6 +88,8 @@ struct DashboardCarouselView: View {
         layout: DashboardSceneLayout,
         model: DashboardCarouselModel,
         showsDemoBanner: Bool,
+        showsDemoToggle: Bool,
+        demoMode: Binding<Bool>,
         onRefreshAll: @escaping @MainActor () -> Void,
         onAddProvider: @escaping () -> Void,
         onCommitAccountOrder: @escaping ([UUID]) -> Void,
@@ -94,6 +100,8 @@ struct DashboardCarouselView: View {
         self.layout = layout
         _model = ObservedObject(wrappedValue: model)
         self.showsDemoBanner = showsDemoBanner
+        self.showsDemoToggle = showsDemoToggle
+        _demoMode = demoMode
         self.onRefreshAll = onRefreshAll
         self.onAddProvider = onAddProvider
         self.onCommitAccountOrder = onCommitAccountOrder
@@ -325,34 +333,58 @@ struct DashboardCarouselView: View {
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(theme.secondaryForeground)
-            Button(action: onAddProvider) {
-                Text(L10n.tr("providers.add", language))
-                    .font(.headline)
-                    .foregroundStyle(theme.isDark ? theme.primaryForeground : theme.pageBackground)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        Capsule()
-                            .fill(theme.isDark ? theme.surfaceBase : theme.primaryForeground)
-                            .overlay {
-                                Capsule()
-                                    .stroke(
-                                        theme.metalAccent.opacity(theme.isDark ? 0.64 : 0.78),
-                                        lineWidth: 1
-                                    )
-                            }
-                            .shadow(
-                                color: theme.surfaceShadow.opacity(theme.isDark ? 0.32 : 0.12),
-                                radius: 10,
-                                y: 5
-                            )
+            VStack(spacing: 14) {
+                Button(action: onAddProvider) {
+                    Text(L10n.tr("providers.add", language))
+                        .font(.headline)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Capsule())
+                        .modifier(EmptyStateCapsuleSurface(prominent: true, theme: theme, reduceTransparency: reduceTransparency))
+                }
+                .buttonStyle(.plain)
+                .dashboardSceneControlRegion()
+                .environment(\.dashboardSceneControlsEnabled, true)
+
+                if showsDemoToggle {
+                    // 还没有服务商时先看演示效果；开后空态让位给演示卡，首页不给关，关闭去设置。
+                    // 次要样式的胶囊按钮：与上方「新增供应商」同形状 / 字号 / 宽度，读作次要强调；
+                    // 一次性开关，点下即开，首页不提供关闭入口。iOS 26 且未关闭透明度时两颗按钮都走
+                    // 液态玻璃（主按钮按主题强调色着色），见 EmptyStateCapsuleSurface。
+                    VStack(spacing: 8) {
+                        Button {
+                            withAnimation(expansionAnimation) { demoMode = true }
+                        } label: {
+                            Text(L10n.tr("home.demo.enable", language))
+                                .font(.headline)
+                                .padding(.horizontal, 22)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity)
+                                .contentShape(Capsule())
+                                .modifier(EmptyStateCapsuleSurface(prominent: false, theme: theme, reduceTransparency: reduceTransparency))
+                        }
+                        .buttonStyle(.plain)
+                        .dashboardSceneControlRegion()
+                        .environment(\.dashboardSceneControlsEnabled, true)
+                        .accessibilityIdentifier("home.demoToggle")
+
+                        Text(L10n.tr("home.demo.toggle.hint", language))
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryForeground)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .contentShape(Capsule())
+                }
             }
-            .buttonStyle(.plain)
-            .dashboardSceneControlRegion()
-            .environment(\.dashboardSceneControlsEnabled, true)
+            .background {
+                // 纯色底上液态玻璃无物可折射；只在真正渲染玻璃时垫单色柔光（不是控件区、不拦点击），回落样式保持原样。
+                // 取贴场景米金 / 近黑的暖金。不直接用 theme.metalAccent：浅色下它是深古铜，叠出来发灰；
+                // 深色下它近白，只会铺一层灰雾。深色底近黑，取更亮的一档。
+                if #available(iOS 26.0, *), !reduceTransparency {
+                    EmptyStateGlowBackdrop(tint: Color(brandTintHex: theme.isDark ? "#E3A445" : "#D9A441"))
+                }
+            }
 
             Text(L10n.tr("privacy.footer", language))
                 .font(.caption2)
@@ -661,6 +693,7 @@ struct DashboardCarouselView: View {
             isCustom: item.isCustom,
             customLogoData: item.customLogoData,
             customSubtitle: item.customSubtitle,
+            isDemo: item.isDemo,
             onEdit: item.onEdit,
             onReorderMetrics: item.onReorderMetrics,
             refreshGlow: effectiveRefreshGlow,
@@ -915,6 +948,60 @@ struct DashboardCarouselView: View {
         blankTapCandidate = nil
     }
 }
+
+/// 空态胶囊按钮的表面：iOS 26 且未关闭透明度时走液态玻璃（主按钮按主题强调色着色），
+/// 否则落回原本的填充 / 描边 / 投影组合。`.contentShape(Capsule())` 须在调用处先声明再套本
+/// modifier——液态玻璃不参与命中测试，否则只有文字字形能点到（DEVLOG #95）。
+private struct EmptyStateCapsuleSurface: ViewModifier {
+    let prominent: Bool
+    let theme: DashboardSceneTheme
+    let reduceTransparency: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *), !reduceTransparency {
+            content
+                .foregroundStyle(prominent ? theme.pageBackground : theme.primaryForeground)
+                .glassEffect(
+                    prominent ? .regular.tint(theme.metalAccent).interactive() : .regular.interactive(),
+                    in: Capsule(style: .continuous)
+                )
+        } else if prominent {
+            content
+                .foregroundStyle(theme.isDark ? theme.primaryForeground : theme.pageBackground)
+                .background {
+                    Capsule()
+                        .fill(theme.isDark ? theme.surfaceBase : theme.primaryForeground)
+                        .overlay {
+                            Capsule()
+                                .stroke(
+                                    theme.metalAccent.opacity(theme.isDark ? 0.64 : 0.78),
+                                    lineWidth: 1
+                                )
+                        }
+                        .shadow(
+                            color: theme.surfaceShadow.opacity(theme.isDark ? 0.32 : 0.12),
+                            radius: 10,
+                            y: 5
+                        )
+                }
+        } else {
+            content
+                .foregroundStyle(theme.primaryForeground)
+                .background {
+                    Capsule()
+                        .fill(theme.surfaceBase.opacity(theme.isDark ? 0.35 : 0.5))
+                        .overlay {
+                            Capsule()
+                                .stroke(
+                                    theme.metalAccent.opacity(theme.isDark ? 0.64 : 0.78),
+                                    lineWidth: 1
+                                )
+                        }
+                }
+        }
+    }
+}
+
 @MainActor
 private struct DashboardSceneAccessibilityModifier: ViewModifier {
     let isExpanded: Bool
